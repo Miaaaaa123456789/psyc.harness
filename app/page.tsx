@@ -27,6 +27,7 @@ import { OutcomesView } from "@/components/workbench/outcomes";
 import { FamilyView } from "@/components/workbench/family";
 import { GovernanceView } from "@/components/workbench/governance";
 import { PtView } from "@/components/workbench/pt";
+import { AgentChat } from "@/components/workbench/agent-chat";
 import { PORTALS, portalNav, portalOf, DECISION_PROPOSALS, OUTCOME_REVIEWS } from "@/lib/copilot";
 import { Mascot, useClientGsap } from "@/components/workbench/primitives";
 
@@ -361,6 +362,7 @@ function WorkbenchShell() {
 
       <DemoPlayer />
       <Toasts />
+      <AgentChat />
 
       {!isFamily && (
         <SearchSheet open={searchOpen} onClose={() => setSearchOpen(false)} />

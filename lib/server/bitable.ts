@@ -1,7 +1,8 @@
 import { execFile } from "child_process";
 import { promisify } from "util";
 import type { HospitalTask, TaskStatus } from "../hospital";
-import { COMM_ALERT_FEEDBACKS, FOLLOWUP_ALERT_RISK, MED_ALERT_RESULTS, PT_ABNORMAL_STATUS, PT_CLINICAL_REASONS, REPORT_KINDS, type ReportKind, type ReportPayload } from "../reports";
+import { COMM_ALERT_FEEDBACKS, FOLLOWUP_ALERT_RISK, MED_ALERT_RESULTS, PT_ABNORMAL_STATUS, PT_CLINICAL_REASONS, REPORTERS, REPORT_KINDS, ROLE_REPORTER, type ReportKind, type ReportPayload } from "../reports";
+import type { RoleId } from "../hospital";
 
 /**
  * 飞书多维表格（Bitable）适配器 —— 工作台与飞书生态的双向数据通道。
@@ -332,11 +333,14 @@ const REPORT_TABLE: Record<ReportKind, string> = {
 };
 
 /** 填报表单值 → 飞书表字段（select 传数组，datetime 传毫秒时间戳）。
- *  上报人：表单显式填写值优先，缺省回落当前登录角色姓名。 */
+ *  上报人：表单显式选择值优先；不在花名册内时回落当前登录角色默认责任人。 */
 function reportFields(kind: ReportKind, p: ReportPayload, actor: string, roleId?: string | null): Record<string, unknown> {
   const id = `${REPORT_KINDS[kind].idPrefix}-${Date.now()}`;
   const s = (k: string) => String(p[k] ?? "").trim();
-  const reporter = s("上报人") || actor;
+  const reporter = REPORTERS.includes(s("上报人"))
+    ? s("上报人")
+    : (roleId ? ROLE_REPORTER[roleId as RoleId] : undefined) ?? REPORTERS[0];
+  const executor = REPORTERS.includes(s("执行人")) ? s("执行人") : reporter;
   switch (kind) {
     case "safety": {
       const severity = s("严重等级");
@@ -346,7 +350,7 @@ function reportFields(kind: ReportKind, p: ReportPayload, actor: string, roleId?
         严重等级: [severity],
         患者编号: s("患者编号"),
         发生时间: s("发生时间") || nowLabel(),
-        发现人: reporter,
+        发现人: [reporter],
         发现端: [ROLE_CN[roleId ?? ""] ?? "运营端"],
         处置措施: s("处置措施"),
         闭环状态: ["待处置"],
@@ -364,7 +368,7 @@ function reportFields(kind: ReportKind, p: ReportPayload, actor: string, roleId?
         实服时间: result === "已服" ? nowLabel() : "",
         执行结果: [result],
         拒服原因: s("拒服原因"),
-        确认护士: reporter,
+        确认护士: [reporter],
         是否需要复核: MED_ALERT_RESULTS.includes(result),
       };
     }
@@ -381,7 +385,7 @@ function reportFields(kind: ReportKind, p: ReportPayload, actor: string, roleId?
         效果评分: Number(p["效果评分"]) || 0,
         会谈靶点: s("会谈靶点"),
         干预要点: s("干预要点"),
-        治疗师: reporter,
+        治疗师: [reporter],
         进入个案概念化: Boolean(p["进入个案概念化"]),
       };
     }
@@ -393,7 +397,7 @@ function reportFields(kind: ReportKind, p: ReportPayload, actor: string, roleId?
         协调部门: s("协调部门") ? [s("协调部门")] : "",
         承诺完成时间: s("承诺完成时间"),
         备注: s("备注"),
-        管家: reporter,
+        管家: [reporter],
         受理时间: nowLabel(),
         工单状态: ["待受理"],
       };
@@ -411,8 +415,8 @@ function reportFields(kind: ReportKind, p: ReportPayload, actor: string, roleId?
         治疗中观察: s("治疗中观察") ? [s("治疗中观察")] : "",
         不良反应及处置: s("不良反应及处置"),
         治疗后反馈: s("治疗后反馈") ? [s("治疗后反馈")] : "",
-        执行人: s("执行人") || reporter,
-        上报人: reporter,
+        执行人: [executor],
+        上报人: [reporter],
         上报时间: nowLabel(),
         备注: s("备注"),
       };
@@ -428,7 +432,7 @@ function reportFields(kind: ReportKind, p: ReportPayload, actor: string, roleId?
         沟通主题: [s("沟通主题")],
         沟通内容要点: s("沟通内容要点"),
         对象反馈: s("对象反馈") ? [s("对象反馈")] : "",
-        上报人: reporter,
+        上报人: [reporter],
         上报时间: nowLabel(),
         备注: s("备注"),
       };
@@ -447,7 +451,7 @@ function reportFields(kind: ReportKind, p: ReportPayload, actor: string, roleId?
         存在问题: s("存在问题"),
         处理措施: s("处理措施"),
         下次随访时间: s("下次随访时间"),
-        护士姓名: reporter,
+        护士姓名: [reporter],
         备注: s("备注"),
       };
   }

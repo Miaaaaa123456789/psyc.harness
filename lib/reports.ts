@@ -36,13 +36,16 @@ export const ROLE_REPORTS: Record<RoleId, ReportKind[]> = {
   leader: [],
 };
 
-/** 各角色端「上报人」默认值（演示账号，表单中可改） */
+/** 上报人 / 责任人花名册（前后端与飞书 select 选项严格一致） */
+export const REPORTERS = ["李", "彭1", "杨1", "杨2", "邱", "陈", "刘", "沈", "袁", "何", "彭2", "杜", "杨3", "丁", "赵", "曾", "吴", "任"];
+
+/** 各角色端「上报人」默认值（花名册内，表单中可改选） */
 export const ROLE_REPORTER: Partial<Record<RoleId, string>> = {
-  doctor: "医生 陈航",
-  nurse: "护士 李敏",
-  therapist: "治疗师 王岚",
-  butler: "管家 周怡",
-  ops: "运营 赵启",
+  doctor: "陈",
+  nurse: "李",
+  therapist: "杨1",
+  butler: "彭1",
+  ops: "赵",
 };
 
 /* ---- 选项常量（与飞书 select 选项一致） ---- */

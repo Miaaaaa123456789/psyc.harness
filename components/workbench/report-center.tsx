@@ -11,7 +11,7 @@ import {
   FOLLOWUP_METHODS, FOLLOWUP_RISK_LEVELS,
   MED_ALERT_RESULTS, MED_RESULTS, PT_ABNORMAL_STATUS, PT_CLINICAL_REASONS, PT_DURING_OBS, PT_MODALITIES,
   PT_NONCOMPLETE_REASONS, PT_POST_FEEDBACK, PT_SESSION_STATUS, PT_WILLINGNESS,
-  REPORT_KINDS, ROLE_REPORTER, ROLE_REPORTS,
+  REPORTERS, REPORT_KINDS, ROLE_REPORTER, ROLE_REPORTS,
   SAFETY_TYPES, SEVERITY_LEVELS, THERAPY_STATUS, THERAPY_TYPES,
   type ReportKind, type ReportPayload,
 } from "@/lib/reports";
@@ -96,7 +96,7 @@ const FORM_DEFS: Record<ReportKind, FieldDef[]> = {
       placeholder: "症状、开始时间、处置与恢复情况…",
     },
     { key: "治疗后反馈", label: "治疗后反馈", type: "chips", options: PT_POST_FEEDBACK },
-    { key: "执行人", label: "执行人", type: "text", placeholder: "默认与上报人一致" },
+    { key: "执行人", label: "执行人", type: "chips", options: REPORTERS, placeholder: "默认与上报人一致" },
     { key: "备注", label: "备注", type: "textarea", placeholder: "补做 / 改期安排等…" },
   ],
   communication: [
@@ -196,11 +196,16 @@ export function ReportCenter({ open, onClose }: { open: boolean; onClose: () => 
                   <p className="report-target">写入位置：{REPORT_KINDS[active].tableLabel}</p>
                   <div className="rf-field">
                     <label>上报人<em>*</em></label>
-                    <input
-                      value={reporterValue}
-                      placeholder="填写上报人姓名，如 护士 李敏"
-                      onChange={(e) => setReporter(e.target.value)}
-                    />
+                    <div className="rf-chips">
+                      {REPORTERS.map((name) => (
+                        <button
+                          key={name}
+                          type="button"
+                          className={reporterValue === name ? "selected" : ""}
+                          onClick={() => setReporter(name)}
+                        >{name}</button>
+                      ))}
+                    </div>
                   </div>
                   {visibleFields.map((f) => (
                     <div key={f.key} className="rf-field">

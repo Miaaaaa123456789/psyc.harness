@@ -79,6 +79,24 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     syncFromServer();
   }, [syncFromServer]);
 
+  /* ---- 实时洞察：60s 轮询服务端最新数据（页面不可见时暂停，回前台立即拉一次） ----
+   * 飞书侧或其他窗口写入的数据，本页无需刷新即可自动呈现。 */
+  useEffect(() => {
+    const SYNC_INTERVAL = 60_000;
+    const timer = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      syncFromServer();
+    }, SYNC_INTERVAL);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") syncFromServer();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [syncFromServer]);
+
   /* 审计日志（03 表）：运行与审计页挂载时拉取，任务操作/填报后刷新 */
   const syncAudit = useCallback(() => {
     fetch("/api/audit?limit=30", { cache: "no-store" })

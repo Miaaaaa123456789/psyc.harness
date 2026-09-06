@@ -9,7 +9,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { WorkbenchProvider, useWorkbench, patients, type View } from "@/lib/store";
-import { demoChain, eventStream, hospitalWideSkills, roleSkills, robots, roles } from "@/lib/hospital";
+import { demoChain, eventStream, hospitalWideSkills, roleSkills, robots } from "@/lib/hospital";
 import { OverviewView } from "@/components/workbench/overview";
 import { RobotsView } from "@/components/workbench/robots";
 import { SkillsView } from "@/components/workbench/skills";
@@ -22,23 +22,28 @@ import { NativeVision } from "@/components/workbench/native-vision";
 import { ReportCenter } from "@/components/workbench/report-center";
 import type { ReportKind } from "@/lib/reports";
 import { InsightsView } from "@/components/workbench/insights";
+import { ProposalsView } from "@/components/workbench/proposals";
+import { OutcomesView } from "@/components/workbench/outcomes";
+import { FamilyView } from "@/components/workbench/family";
+import { GovernanceView } from "@/components/workbench/governance";
+import { PtView } from "@/components/workbench/pt";
+import { PORTALS, portalNav, portalOf, DECISION_PROPOSALS, OUTCOME_REVIEWS } from "@/lib/copilot";
 import { Mascot, useClientGsap } from "@/components/workbench/primitives";
 
-const navItems: { id: View; label: string; icon: LucideIcon }[] = [
-  { id: "overview", label: "今日总览", icon: Home },
-  { id: "robots", label: "机器人团队", icon: Bot },
-  { id: "skills", label: "Skill库", icon: WandSparkles },
-  { id: "tasks", label: "任务中心", icon: ClipboardCheck },
-  { id: "patients", label: "患者管理", icon: HeartPulse },
-  { id: "network", label: "部门协同", icon: Network },
-  { id: "insights", label: "洞察与统计", icon: Lightbulb },
-  { id: "operations", label: "运行与审计", icon: Gauge },
-  { id: "roadmap", label: "实施进度", icon: Route },
+/* 非门户通用视图（更多菜单内） */
+const EXTRA_VIEWS: { view: View; label: string; icon: LucideIcon }[] = [
+  { view: "robots", label: "机器人团队", icon: Bot },
+  { view: "skills", label: "Skill库", icon: WandSparkles },
+  { view: "network", label: "部门协同", icon: Network },
+  { view: "operations", label: "运行与审计", icon: Gauge },
+  { view: "roadmap", label: "实施进度", icon: Route },
 ];
 
 const viewLabels: Record<View, string> = {
   overview: "今日总览", robots: "机器人团队", skills: "Skill库", tasks: "任务中心",
   patients: "患者管理", network: "部门协同", insights: "洞察与统计", operations: "运行与审计", roadmap: "实施进度",
+  proposals: "待确认方案", outcomes: "随访任务", family: "我的治疗与家庭支持", governance: "治理中枢",
+  pt: "物理治疗执行",
 };
 
 function Toasts() {
@@ -155,18 +160,19 @@ function RolePickerSheet({ open, onClose }: { open: boolean; onClose: () => void
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
       <SheetContent side="bottom" className="mobile-sheet role-picker-sheet">
         <SheetHeader>
-          <SheetDescription>ROLE WORKSPACES</SheetDescription>
+          <SheetDescription>ROLE PORTALS</SheetDescription>
           <SheetTitle>切换角色端</SheetTitle>
-          <p>切换后首页、任务、机器人、Skill 和患者信息将同步变化。</p>
+          <p>演示环境可自由切换；正式环境根据登录账号、岗位、患者关系与数据权限自动进入对应端口。</p>
         </SheetHeader>
         <div className="role-picker-grid">
-          {roles.map((r) => {
-            const Icon = r.icon;
+          {PORTALS.map((p) => {
+            const Icon = p.nav[0]?.icon ?? Home;
+            const active = p.roleIds.includes(role.id);
             return (
-              <button key={r.id} className={role.id === r.id ? "active" : ""} onClick={() => { setRole(r.id); onClose(); }}>
-                <span className={`accent-${r.tone}`}><Icon size={16} /></span>
-                <div><b>{r.name}</b><small>{r.note}</small></div>
-                {role.id === r.id && <em>当前</em>}
+              <button key={p.id} className={active ? "active" : ""} onClick={() => { setRole(p.defaultRole); onClose(); }}>
+                <span className={active ? "accent-blue" : "accent-violet"}><Icon size={16} /></span>
+                <div><b>{p.entry}</b><small>{p.note}</small></div>
+                {active && <em>当前</em>}
               </button>
             );
           })}
@@ -177,25 +183,27 @@ function RolePickerSheet({ open, onClose }: { open: boolean; onClose: () => void
 }
 
 function MobileMenuSheet({ open, onClose, onOpenRole }: { open: boolean; onClose: () => void; onOpenRole: () => void }) {
-  const { view, setView } = useWorkbench();
+  const { view, setView, role } = useWorkbench();
+  const portal = portalOf(role.id);
+  const navItems = [...portalNav(portal), ...EXTRA_VIEWS.filter((v) => !portalNav(portal).some((n) => n.view === v.view))];
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
       <SheetContent side="bottom" className="mobile-sheet mobile-menu-sheet">
         <SheetHeader>
-          <SheetDescription>ALL MODULES</SheetDescription>
+          <SheetDescription>{portal.entry.toUpperCase()}</SheetDescription>
           <SheetTitle>更多功能</SheetTitle>
         </SheetHeader>
         <div className="mobile-menu-grid">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
-              <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => { setView(item.id); onClose(); }}>
+              <button key={item.view} className={view === item.view ? "active" : ""} onClick={() => { setView(item.view); onClose(); }}>
                 <span><Icon size={17} /></span><b>{item.label}</b>
               </button>
             );
           })}
           <button onClick={() => { onClose(); onOpenRole(); }}>
-            <span><Layers3 size={17} /></span><b>切换角色</b>
+            <span><Layers3 size={17} /></span><b>切换角色端</b>
           </button>
         </div>
       </SheetContent>
@@ -212,10 +220,27 @@ function WorkbenchShell() {
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportKind, setReportKind] = useState<ReportKind | null>(null);
+  const [reportPatient, setReportPatient] = useState<string | undefined>(undefined);
+  /** 打开填报中心：kind 为 null 时由用户自选表单；patientId 用于从随访/治疗名单带出患者 */
+  const openReport = (kind: ReportKind | null, patientId?: string) => {
+    setReportKind(kind);
+    setReportPatient(patientId);
+    setReportOpen(true);
+  };
   const workspaceRef = useRef<HTMLDivElement>(null);
 
   const waiting = tasks.filter((t) => t.status === "等待人工确认").length;
+  const waitingProposals = DECISION_PROPOSALS.filter((p) => p.status === "等待医生确认").length;
+  const dueOutcomes = OUTCOME_REVIEWS.filter((o) => o.status === "待验证").length;
   const RoleIcon = role.icon;
+
+  /* 当前门户导航：六端角色门户（患者+家属合并 / 运营+院领导合并） */
+  const portal = portalOf(role.id);
+  const portalItems = portalNav(portal);
+  const navItems = useMemo(
+    () => [...portalItems, ...EXTRA_VIEWS.filter((v) => !portalItems.some((n) => n.view === v.view))],
+    [portalItems],
+  );
 
   const go = (v: View) => { setView(v); };
 
@@ -224,8 +249,8 @@ function WorkbenchShell() {
     gsap.from(workspaceRef.current?.children ?? [], { autoAlpha: 0, y: 14, duration: .4, stagger: .05, ease: "power2.out" });
   }, { scope: workspaceRef, dependencies: [view] });
 
-  const mobileNav = useMemo(() =>
-    (["overview", "tasks", "patients", "robots"] as View[]).map((id) => navItems.find((n) => n.id === id)!), []);
+  const mobileNav = portalItems.slice(0, 4);
+  const isFamily = portal.id === "familyPortal";
 
   return (
     <main className="work-app">
@@ -236,15 +261,17 @@ function WorkbenchShell() {
         </div>
         <div className="hospital-switch">
           <Building2 size={16} />
-          <span><b>精神专科医院</b><small>全院工作空间</small></span>
+          <span><b>精神专科医院</b><small>{portal.entry}</small></span>
         </div>
         <nav className="desktop-nav" aria-label="主导航">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
-              <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => go(item.id)}>
+              <button key={item.view} className={view === item.view ? "active" : ""} onClick={() => go(item.view)}>
                 <Icon size={17} /><span>{item.label}</span>
-                {item.id === "tasks" && waiting > 0 && <em className="nav-badge">{waiting}</em>}
+                {item.view === "tasks" && waiting > 0 && <em className="nav-badge">{waiting}</em>}
+                {item.view === "proposals" && waitingProposals > 0 && <em className="nav-badge">{waitingProposals}</em>}
+                {item.view === "outcomes" && dueOutcomes > 0 && <em className="nav-badge nav-badge-soft">{dueOutcomes}</em>}
               </button>
             );
           })}
@@ -268,20 +295,22 @@ function WorkbenchShell() {
               <i /><span>演示运行态</span>
             </button>
             <button className="report-entry" onClick={() => setReportOpen(true)}>
-              <ClipboardPlus size={13} /><span>填报</span>
+              <ClipboardPlus size={13} /><span>{["nurse", "therapist"].includes(role.id) ? "异常上报" : "填报"}</span>
             </button>
-            <button className="search-button" onClick={() => setSearchOpen(true)}>
-              <Search size={14} /><span>搜索机器人、Skill、任务</span><kbd>⌘K</kbd>
-            </button>
+            {!isFamily && (
+              <button className="search-button" onClick={() => setSearchOpen(true)}>
+                <Search size={14} /><span>搜索机器人、Skill、任务</span><kbd>⌘K</kbd>
+              </button>
+            )}
             <button className="icon-button" aria-label="消息通知" onClick={() => setNoticeOpen(true)}>
-              <Bell size={15} />{waiting > 0 && <i className="notice-dot" />}
+              <Bell size={15} />{(waiting + waitingProposals) > 0 && <i className="notice-dot" />}
             </button>
             <button className="native-entry" onClick={() => setNativeOpen(true)}>
               <Sparkles size={13} /><span>AI Native 视界</span>
             </button>
             <button className="role-switch" onClick={() => setRolePickerOpen(true)}>
               <span className={`role-chip-icon accent-${role.tone}`}><RoleIcon size={14} /></span>
-              <span className="role-chip-name">{role.name}</span>
+              <span className="role-chip-name">{portal.entry}</span>
               <ChevronRight size={12} />
             </button>
             <span className="top-avatar" aria-label="个人头像">Y</span>
@@ -295,16 +324,21 @@ function WorkbenchShell() {
         <div className="workspace-scroll">
           <div ref={workspaceRef} className="workspace">
             {view === "overview" && (
-              <OverviewView onReport={(kind) => { setReportKind(kind); setReportOpen(true); }} />
+              <OverviewView onReport={(kind) => openReport(kind)} />
             )}
             {view === "robots" && <RobotsView />}
             {view === "skills" && <SkillsView />}
             {view === "tasks" && <TasksView />}
             {view === "patients" && <PatientsView />}
             {view === "network" && <NetworkView />}
-            {view === "insights" && <InsightsView onReport={() => { setReportKind(null); setReportOpen(true); }} />}
+            {view === "insights" && <InsightsView onReport={() => openReport(null)} />}
             {view === "operations" && <OperationsView />}
             {view === "roadmap" && <RoadmapView onOpenNative={() => setNativeOpen(true)} />}
+            {view === "proposals" && <ProposalsView />}
+            {view === "outcomes" && <OutcomesView onReport={openReport} />}
+            {view === "pt" && <PtView onReport={openReport} />}
+            {view === "family" && <FamilyView />}
+            {view === "governance" && <GovernanceView />}
           </div>
         </div>
 
@@ -312,9 +346,10 @@ function WorkbenchShell() {
           {mobileNav.map((item) => {
             const Icon = item.icon;
             return (
-              <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => go(item.id)}>
-                <Icon size={19} /><span>{item.id === "overview" ? "今日" : item.label.replace("管理", "").replace("团队", "").replace("中心", "")}</span>
-                {item.id === "tasks" && waiting > 0 && <i className="nav-badge">{waiting}</i>}
+              <button key={item.view} className={view === item.view ? "active" : ""} onClick={() => go(item.view)}>
+                <Icon size={19} /><span>{item.label.replace("管理", "").replace("团队", "").replace("中心", "").slice(0, 4)}</span>
+                {item.view === "tasks" && waiting > 0 && <i className="nav-badge">{waiting}</i>}
+                {item.view === "proposals" && waitingProposals > 0 && <i className="nav-badge">{waitingProposals}</i>}
               </button>
             );
           })}
@@ -327,9 +362,11 @@ function WorkbenchShell() {
       <DemoPlayer />
       <Toasts />
 
-      <SearchSheet open={searchOpen} onClose={() => setSearchOpen(false)} />
+      {!isFamily && (
+        <SearchSheet open={searchOpen} onClose={() => setSearchOpen(false)} />
+      )}
       <NotificationSheet open={noticeOpen} onClose={() => setNoticeOpen(false)} />
-      <ReportCenter open={reportOpen} onClose={() => setReportOpen(false)} initialKind={reportKind} />
+      <ReportCenter open={reportOpen} onClose={() => setReportOpen(false)} initialKind={reportKind} initialPatient={reportPatient} />
       <RolePickerSheet open={rolePickerOpen} onClose={() => setRolePickerOpen(false)} />
       <MobileMenuSheet open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} onOpenRole={() => setRolePickerOpen(true)} />
       {nativeOpen && <NativeVision onClose={() => setNativeOpen(false)} />}

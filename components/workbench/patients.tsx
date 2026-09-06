@@ -1,12 +1,13 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { BedDouble, Briefcase, CheckCircle2, ChevronRight, Crown, HeartPulse, LockKeyhole, MapPin, Scale, ShieldCheck, UserRound, WalletCards } from "lucide-react";
+import { BedDouble, Briefcase, CheckCircle2, ChevronRight, Crown, HeartPulse, LockKeyhole, MapPin, Scale, ShieldCheck, TrendingUp, UserRound, WalletCards } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { careLevels, type Patient } from "@/lib/hospital";
 import { patients, useWorkbench } from "@/lib/store";
-import { EmptyState, LighthouseBeacon, Mascot, PageHeading, useClientGsap } from "./primitives";
+import { STRATIFICATIONS, VIP_META, type Stratification } from "@/lib/copilot";
+import { EmptyState, LighthouseBeacon, Mascot, PageHeading, RiskBadge, useClientGsap } from "./primitives";
 
 function VoyageMap({ voyage, animate = true }: { voyage: Patient["voyage"]; animate?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -31,23 +32,84 @@ function VoyageMap({ voyage, animate = true }: { voyage: Patient["voyage"]; anim
 }
 
 function PatientCard({ patient, onOpen }: { patient: Patient; onOpen: () => void }) {
+  const strat = STRATIFICATIONS.find((s) => s.patientId === patient.id);
   return (
     <article className={`patient-card panel care-${patient.care.toLowerCase()}`} onClick={onOpen}>
       <header>
         <span className="patient-avatar"><UserRound size={16} /></span>
         <div><b>{patient.id}</b><small>{patient.stage}</small></div>
+        {strat && <RiskBadge risk={strat.risk} />}
+        {strat && strat.vip !== "none" && <span className={`vip-chip ${VIP_META[strat.vip].cls}`}>{VIP_META[strat.vip].label}</span>}
         <span className="patient-state">{patient.state}</span>
       </header>
+      {strat && <p className="strat-risk-reason">{strat.riskReason}</p>}
       <div className="patient-dims">
-        <span className="dim-a"><small>临床照护</small><b>{patient.care} {careLevels[patient.care].name}</b></span>
-        <span className="dim-b"><small>服务配置</small><b>{patient.service.matched.ward} · {patient.service.channel.includes("VIP") ? "VIP渠道" : "标准渠道"}</b></span>
+        <span className="dim-a"><small>照护需求</small><b>{patient.care} {careLevels[patient.care].name}</b></span>
+        <span className="dim-b"><small>治疗阶段</small><b>{strat?.stage ?? patient.stage}</b></span>
       </div>
       <p className="patient-care-reason">{patient.careReason}</p>
       <div className="patient-events">
         {patient.events.slice(0, 3).map((e) => <span key={e}>{e}</span>)}
       </div>
-      <footer><span>关注度 <b>{patient.attention}</b></span><ChevronRight size={15} /></footer>
+      <footer>
+        {strat && strat.vip !== "none" ? (
+          <span className="vip-progress"><Crown size={12} />配合度 {strat.vipProgress.adherence}% · 积分 {strat.vipProgress.points.toLocaleString()}</span>
+        ) : (
+          <span>配合度 {strat?.vipProgress.adherence ?? "—"}%</span>
+        )}
+        <ChevronRight size={15} />
+      </footer>
     </article>
+  );
+}
+
+/* ==================== 临床风险 × VIP 等级矩阵 ====================
+ * 临床风险决定医疗处理优先级；VIP 等级只决定服务权益与时限。
+ * 排序原则：普通高风险患者优先于低风险钻石VIP的非紧急服务。 */
+const RISK_ORDER = ["高", "中", "低"] as const;
+const VIP_ORDER = ["none", "gold", "platinum", "diamond"] as const;
+
+function RiskVipMatrix({ onOpen }: { onOpen: (p: Patient) => void }) {
+  const cells = RISK_ORDER.flatMap((risk) =>
+    VIP_ORDER.map((vip) => ({
+      risk, vip,
+      items: patients
+        .map((p) => ({ p, s: STRATIFICATIONS.find((s) => s.patientId === p.id) }))
+        .filter((x): x is { p: Patient; s: Stratification } => x.s?.risk === risk && x.s?.vip === vip),
+    })),
+  );
+  return (
+    <section className="panel strat-matrix" aria-label="临床风险与VIP等级矩阵">
+      <header className="panel-head-compact">
+        <div><span>STRATIFICATION MATRIX</span><b>临床风险 × VIP等级</b></div>
+        <small>红=临床优先级 · 金=服务权益，两者独立计算</small>
+      </header>
+      <div className="sm-grid">
+        <div className="sm-corner"><TrendingUp size={12} />风险↓ / VIP→</div>
+        {VIP_ORDER.map((v) => <div key={v} className={`sm-colhead ${VIP_META[v].cls}`}>{VIP_META[v].label}</div>)}
+        {RISK_ORDER.map((risk) => (
+          <div key={risk} className="sm-row">
+            <div className={`sm-rowhead risk-${risk}`}><b>{risk}风险</b></div>
+            {VIP_ORDER.map((vip) => {
+              const cell = cells.find((c) => c.risk === risk && c.vip === vip);
+              const items = cell?.items ?? [];
+              return (
+                <div key={vip} className={`sm-cell ${items.length ? "has" : ""} ${risk === "高" ? "risk-high" : ""}`}>
+                  {items.map(({ p, s }) => (
+                    <button key={p.id} className="sm-patient" onClick={() => onOpen(p)}>
+                      <b>{p.id}</b>
+                      <small>{s.stage}</small>
+                      <em>{p.care}</em>
+                    </button>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      <p className="sm-note"><ShieldCheck size={12} />临床风险决定医疗处理优先级；VIP等级仅决定额外服务权益与时限。普通高风险患者优先于低风险钻石VIP的非紧急服务。</p>
+    </section>
   );
 }
 
@@ -272,27 +334,11 @@ export function PatientsView() {
   return (
     <div className="view-stack">
       <PageHeading
-        eyebrow="PATIENT MANAGEMENT"
-        title="患者管理"
-        description="双维度分级：临床照护强度（C1—C4）决定医疗资源；服务配置独立匹配非医疗需求。"
+        eyebrow="PATIENT STRATIFICATION"
+        title="患者分层管理"
+        description="每位患者同时具有临床风险、照护需求、VIP服务等级与治疗阶段四种属性；风险可解释，VIP不干预临床优先级。"
       />
-      <section className="panel dual-dimension">
-        <div className="dd-col">
-          <header><b>维度A · 临床照护强度</b><small>由临床风险和复杂度决定</small></header>
-          <div className="dd-levels">
-            {Object.entries(careLevels).map(([code, info]) => (
-              <span key={code}><b>{code}</b><span>{info.name}</span></span>
-            ))}
-          </div>
-          <em><Scale size={12} />临床照护强度永远优先于消费能力和VIP身份</em>
-        </div>
-        <i className="dd-divider" />
-        <div className="dd-col">
-          <header><b>维度B · 服务配置</b><small>居住、工作、渠道、依从性、偏好、预算、家庭支持、支付方式</small></header>
-          <p className="dd-note">用于匹配病房价位、管家、医生团队、治疗师配置、个体/团体治疗、院外随访强度与远程服务。</p>
-          <em><LockKeyhole size={12} />经济与VIP信息不能降低临床安全标准</em>
-        </div>
-      </section>
+      <RiskVipMatrix onOpen={setDetail} />
       <div className="patient-grid">
         {list.map((p) => <PatientCard key={p.id} patient={p} onOpen={() => setDetail(p)} />)}
       </div>

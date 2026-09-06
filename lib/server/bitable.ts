@@ -109,7 +109,10 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     cache: "no-store",
   });
   const json = (await res.json()) as { code?: number; msg?: string; data?: T };
-  if (json.code !== 0) throw new Error(`飞书接口错误 ${json.code}: ${json.msg}`);
+  if (json.code !== 0) {
+    if (init?.body) console.error(`[bitable] 写入失败 ${json.code} ${json.msg} path=${path} body=${String(init.body).slice(0, 600)}`);
+    throw new Error(`飞书接口错误 ${json.code}: ${json.msg}`);
+  }
   return json.data as T;
 }
 
@@ -186,6 +189,56 @@ export async function listRecords(tableId: string): Promise<BitableRecord[]> {
   return out;
 }
 
+/* ==================== 字段类型归一化（api 传输专用） ==================== */
+/**
+ * lark-cli 写入时单选/多选都接受数组；飞书原生 API 则要求：
+ * 单选(type 3)=字符串、多选(type 4)=数组、数字(type 2)=number。
+ * 按表结构缓存字段类型，写入前统一归一化，业务层无需关心传输差异。
+ */
+type FieldMeta = { name: string; type: number };
+const fieldCache = new Map<string, FieldMeta[]>();
+
+async function tableFields(tableId: string): Promise<FieldMeta[]> {
+  const cached = fieldCache.get(tableId);
+  if (cached) return cached;
+  const items: FieldMeta[] = [];
+  let pageToken: string | undefined;
+  do {
+    const qs = new URLSearchParams({ page_size: "100" });
+    if (pageToken) qs.set("page_token", pageToken);
+    const data = await api<{ items?: { field_name?: string; type?: number }[]; page_token?: string; has_more?: boolean }>(
+      `/bitable/v1/apps/${BASE_TOKEN}/tables/${tableId}/fields?${qs}`,
+    );
+    for (const it of data.items ?? []) {
+      if (it.field_name) items.push({ name: it.field_name, type: it.type ?? 1 });
+    }
+    pageToken = data.has_more ? data.page_token : undefined;
+  } while (pageToken);
+  fieldCache.set(tableId, items);
+  return items;
+}
+
+function coerceFields(meta: FieldMeta[], fields: Record<string, unknown>): Record<string, unknown> {
+  const byName = new Map(meta.map((m) => [m.name, m.type]));
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(fields)) {
+    const t = byName.get(k);
+    /* 表中不存在的字段直接剔除（如部分业务表无「数据来源」列），避免 FieldNameNotFound */
+    if (t === undefined) continue;
+    /* 单选/多选字段空值直接剔除（发空字符串会报 FieldNameNotFound / ConvFail），文本字段允许空串 */
+    if (v === "" || v === null || v === undefined) {
+      if (t === 3 || t === 4) continue;
+      out[k] = v;
+      continue;
+    }
+    if (t === 3) out[k] = Array.isArray(v) ? (v[0] ?? "") : v;
+    else if (t === 4) out[k] = Array.isArray(v) ? v : [v];
+    else if (t === 2) { const n = Number(v); out[k] = Number.isNaN(n) ? 0 : n; }
+    else out[k] = v;
+  }
+  return out;
+}
+
 export async function createRecord(tableId: string, fields: Record<string, unknown>) {
   if (transport() === "cli") {
     await cli([
@@ -197,9 +250,10 @@ export async function createRecord(tableId: string, fields: Record<string, unkno
     ]);
     return;
   }
+  const normalized = coerceFields(await tableFields(tableId), fields);
   await api(`/bitable/v1/apps/${BASE_TOKEN}/tables/${tableId}/records`, {
     method: "POST",
-    body: JSON.stringify({ fields }),
+    body: JSON.stringify({ fields: normalized }),
   });
 }
 
@@ -218,9 +272,10 @@ export async function updateRecord(
     ]);
     return;
   }
+  const normalized = coerceFields(await tableFields(tableId), fields);
   await api(
     `/bitable/v1/apps/${BASE_TOKEN}/tables/${tableId}/records/${recordId}`,
-    { method: "PUT", body: JSON.stringify({ fields }) },
+    { method: "PUT", body: JSON.stringify({ fields: normalized }) },
   );
 }
 
@@ -357,6 +412,7 @@ function buildReportFields(kind: ReportKind, p: ReportPayload, actor: string, ro
         发生时间: s("发生时间") || nowLabel(),
         发现人: [reporter],
         发现端: [ROLE_CN[roleId ?? ""] ?? "运营端"],
+        上报人: [reporter],
         处置措施: s("处置措施"),
         闭环状态: ["待处置"],
         是否升级医生: severity === "高",
@@ -374,6 +430,7 @@ function buildReportFields(kind: ReportKind, p: ReportPayload, actor: string, ro
         执行结果: [result],
         拒服原因: s("拒服原因"),
         确认护士: [reporter],
+        上报人: [reporter],
         是否需要复核: MED_ALERT_RESULTS.includes(result),
       };
     }
@@ -446,7 +503,8 @@ function buildReportFields(kind: ReportKind, p: ReportPayload, actor: string, ro
     case "followup":
       return {
         序号: id,
-        姓名: s("姓名") || s("患者编号"),
+        患者编号: s("患者编号"),
+        姓名: s("姓名"),
         住院号: s("住院号"),
         出院日期: s("出院日期"),
         联系电话: s("联系电话"),
@@ -457,6 +515,7 @@ function buildReportFields(kind: ReportKind, p: ReportPayload, actor: string, ro
         处理措施: s("处理措施"),
         下次随访时间: s("下次随访时间"),
         护士姓名: [reporter],
+        上报人: [reporter],
         备注: s("备注"),
       };
     /* 自定义记录：由用户自由定义记录内容，统计页只统计这一类与「人工填报」的业务记录 */
@@ -469,6 +528,7 @@ function buildReportFields(kind: ReportKind, p: ReportPayload, actor: string, ro
         数值: Number(s("数值")) || 0,
         单位: s("单位"),
         记录人: [reporter],
+        上报人: [reporter],
         记录时间: nowLabel(),
         标签: s("标签"),
       };

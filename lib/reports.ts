@@ -1,4 +1,11 @@
 import type { RoleId } from "./hospital";
+import {
+  ROSTER_BY_ROLE as ROSTER_BY_ROLE_SRC,
+  DEFAULT_REPORTER,
+  ALL_STAFF,
+  STAFF_GROUPS,
+  type StaffGroup,
+} from "./roster";
 
 /**
  * 业务填报（统一填报中心）的共享定义。
@@ -41,17 +48,22 @@ export const ROLE_REPORTS: Record<RoleId, ReportKind[]> = {
 /** 自定义记录的记录类型（可统计的分组维度） */
 export const CUSTOM_TYPES = ["观察记录", "事件记录", "工作量", "沟通随访", "质量与安全", "其他"];
 
-/** 上报人 / 责任人花名册（前后端与飞书 select 选项严格一致） */
-export const REPORTERS = ["李", "彭1", "杨1", "杨2", "邱", "陈", "刘", "沈", "袁", "何", "彭2", "杜", "杨3", "丁", "赵", "曾", "吴", "任"];
+/**
+ * 上报人 / 责任人花名册（前后端与飞书 select 选项严格一致）
+ * 真源在 lib/roster.ts：医护治管家各自独立名单，此处为全院并集，
+ * 供后端校验与飞书 select 选项使用；前端按角色端从 ROSTER_BY_ROLE 取子集。
+ */
+export const REPORTERS = ALL_STAFF;
 
-/** 各角色端「上报人」默认值（花名册内，表单中可改选） */
-export const ROLE_REPORTER: Partial<Record<RoleId, string>> = {
-  doctor: "陈",
-  nurse: "李",
-  therapist: "杨1",
-  butler: "彭1",
-  ops: "赵",
-};
+/** 各角色端「上报人」候选名单（只含本端人员） */
+export const ROSTER_BY_ROLE = ROSTER_BY_ROLE_SRC;
+
+/** 各角色端「上报人」默认值（本端花名册内，表单中可改选） */
+export const ROLE_REPORTER: Record<RoleId, string> = DEFAULT_REPORTER;
+
+/** 端分组（管理端代填时按端分组展示） */
+export { STAFF_GROUPS };
+export type { StaffGroup };
 
 /* ---- 选项常量（与飞书 select 选项一致） ---- */
 export const SAFETY_TYPES = ["自杀意念", "自伤行为", "冲动攻击", "外跑企图", "跌倒", "搜危物品", "拒药拒食", "其他"];

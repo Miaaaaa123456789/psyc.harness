@@ -4,8 +4,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { initialTasks, patients, type HospitalTask, type Role, type RoleId, type TaskStatus, roles } from "./hospital";
 import { REPORT_KINDS, type ReportKind, type ReportPayload } from "./reports";
 import type { CustomStats, Insight } from "./insights";
+import type { View as CopilotView } from "./copilot";
 
-export type View = "overview" | "robots" | "skills" | "tasks" | "patients" | "network" | "insights" | "operations" | "roadmap";
+export type View = CopilotView;
 
 export type AuditEntry = {
   id: string; time: string; actor: string; role: string;

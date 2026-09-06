@@ -7,7 +7,7 @@ import type { RoleId } from "./hospital";
  * 选项依据《护理信息总表与Copilot字段清单》Copilot必需字段表的枚举值。
  */
 
-export type ReportKind = "safety" | "medication" | "therapy" | "butler" | "pt" | "communication" | "followup";
+export type ReportKind = "safety" | "medication" | "therapy" | "butler" | "pt" | "communication" | "followup" | "custom";
 
 export type ReportPayload = Record<string, string | number | boolean>;
 
@@ -22,19 +22,24 @@ export const REPORT_KINDS: Record<
   pt: { label: "物理治疗参与情况", tableLabel: "13_物理治疗执行与沟通", idPrefix: "PT", idField: "记录编号" },
   communication: { label: "在院沟通记录", tableLabel: "14_沟通记录", idPrefix: "C", idField: "记录编号" },
   followup: { label: "出院随访记录", tableLabel: "15_出院随访记录", idPrefix: "F", idField: "序号" },
+  custom: { label: "自定义记录", tableLabel: "16_自定义记录", idPrefix: "R", idField: "记录编号" },
 };
 
-/** 每个角色端在填报中心可填的表单（患者端/家属端/院领导端暂无） */
+/** 每个角色端在填报中心可填的表单（患者端/家属端/院领导端暂无）。
+ *  自定义记录对所有角色开放，便于各端按自己口径记录并统计。 */
 export const ROLE_REPORTS: Record<RoleId, ReportKind[]> = {
-  doctor: ["safety", "communication", "followup"],
-  nurse: ["safety", "medication", "pt", "communication", "followup"],
-  therapist: ["safety", "therapy", "pt", "communication", "followup"],
-  patient: [],
-  family: [],
-  butler: ["butler", "safety", "communication", "followup"],
-  ops: ["butler", "safety", "communication"],
-  leader: [],
+  doctor: ["custom", "safety", "communication", "followup"],
+  nurse: ["custom", "safety", "medication", "pt", "communication", "followup"],
+  therapist: ["custom", "safety", "therapy", "pt", "communication", "followup"],
+  patient: ["custom"],
+  family: ["custom"],
+  butler: ["custom", "butler", "safety", "communication", "followup"],
+  ops: ["custom", "butler", "safety", "communication"],
+  leader: ["custom"],
 };
+
+/** 自定义记录的记录类型（可统计的分组维度） */
+export const CUSTOM_TYPES = ["观察记录", "事件记录", "工作量", "沟通随访", "质量与安全", "其他"];
 
 /** 上报人 / 责任人花名册（前后端与飞书 select 选项严格一致） */
 export const REPORTERS = ["李", "彭1", "杨1", "杨2", "邱", "陈", "刘", "沈", "袁", "何", "彭2", "杜", "杨3", "丁", "赵", "曾", "吴", "任"];
@@ -87,6 +92,15 @@ export const FOLLOWUP_METHODS = ["医院电话", "官方线上渠道", "其他�
 export const FOLLOWUP_RISK_LEVELS = ["低", "中", "高", "待评估"];
 /** 风险等级=高 时联动任务推医生端（高风险不得由 AI 单独关闭，必须人工升级处置） */
 export const FOLLOWUP_ALERT_RISK = "高";
+/**
+ * 随访联系结果（followup_contact_result，洞察 D06 核心判据）。
+ * 未接通只表示信息不可得，不等于患者恶化，也不得据此自动判定风险高低。
+ */
+export const FOLLOWUP_CONTACT_RESULTS = ["已接通", "未接通", "无人接听", "号码错误", "拒绝接听"];
+/** 这些联系结果属于「未取得联系」，洞察需按信息缺失处理而非风险信号 */
+export const FOLLOWUP_UNREACHED = ["未接通", "无人接听", "号码错误", "拒绝接听"];
+/** 给药后反应（洞察 D02 药物—症状—检查联合复核的观察项） */
+export const MED_REACTIONS = ["无不适", "轻微不适", "明显不适", "需处理"];
 
 export function isReportKind(v: unknown): v is ReportKind {
   return typeof v === "string" && v in REPORT_KINDS;

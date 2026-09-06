@@ -3,8 +3,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { initialTasks, patients, type HospitalTask, type Role, type RoleId, type TaskStatus, roles } from "./hospital";
 import { REPORT_KINDS, type ReportKind, type ReportPayload } from "./reports";
+import type { CustomStats, Insight } from "./insights";
 
-export type View = "overview" | "robots" | "skills" | "tasks" | "patients" | "network" | "operations" | "roadmap";
+export type View = "overview" | "robots" | "skills" | "tasks" | "patients" | "network" | "insights" | "operations" | "roadmap";
 
 export type AuditEntry = {
   id: string; time: string; actor: string; role: string;
@@ -26,6 +27,10 @@ type WorkbenchState = {
   submitReport: (kind: ReportKind, payload: ReportPayload) => Promise<boolean>;
   audit: AuditEntry[];
   syncAudit: () => void;
+  /* 洞察卡与自定义记录统计（只统计「人工填报」，排除演示种子数据） */
+  insights: Insight[];
+  customStats: CustomStats | null;
+  syncInsights: () => void;
   demoMode: boolean;
   setDemoMode: (on: boolean) => void;
   demoPlaying: boolean;
@@ -57,6 +62,8 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
   const [p042Attention, setP042Attention] = useState(72);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [audit, setAudit] = useState<AuditEntry[]>([]);
+  const [insights, setInsights] = useState<Insight[]>([]);
+  const [customStats, setCustomStats] = useState<CustomStats | null>(null);
   const toastId = useRef(0);
 
   const role = useMemo(() => roles.find((r) => r.id === roleId) ?? roles[0], [roleId]);
@@ -75,9 +82,23 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  /* 洞察与自定义记录统计：数据来自 /api/insights，只统计人工填报记录 */
+  const syncInsights = useCallback(() => {
+    fetch("/api/insights", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { insights?: Insight[]; custom?: CustomStats } | null) => {
+        if (data?.insights) setInsights(data.insights);
+        if (data?.custom) setCustomStats(data.custom);
+      })
+      .catch(() => {
+        // 离线或静态导出时保持空列表
+      });
+  }, []);
+
   useEffect(() => {
     syncFromServer();
-  }, [syncFromServer]);
+    syncInsights();
+  }, [syncFromServer, syncInsights]);
 
   /* ---- 实时洞察：60s 轮询服务端最新数据（页面不可见时暂停，回前台立即拉一次） ----
    * 飞书侧或其他窗口写入的数据，本页无需刷新即可自动呈现。 */
@@ -86,16 +107,17 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     const timer = setInterval(() => {
       if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       syncFromServer();
+      syncInsights();
     }, SYNC_INTERVAL);
     const onVisible = () => {
-      if (document.visibilityState === "visible") syncFromServer();
+      if (document.visibilityState === "visible") { syncFromServer(); syncInsights(); }
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [syncFromServer]);
+  }, [syncFromServer, syncInsights]);
 
   /* 审计日志（03 表）：运行与审计页挂载时拉取，任务操作/填报后刷新 */
   const syncAudit = useCallback(() => {
@@ -182,12 +204,13 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         notify(`已联动生成任务 ${data.taskId}，推送至医生端确认`, "info");
         syncFromServer();
       }
+      syncInsights();
       return true;
     } catch (err) {
       notify(`填报失败：${err instanceof Error ? err.message : "网络错误"}`, "warn");
       return false;
     }
-  }, [role, notify, syncFromServer]);
+  }, [role, notify, syncFromServer, syncInsights]);
 
   /* ---- 演示模式（纯前端模拟：进度与状态变更仅存于内存，刷新后回落到服务端持久状态） ---- */
   const setDemoMode = useCallback((on: boolean) => {
@@ -237,6 +260,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     view, setView, role, setRole: setRoleId,
     tasks, acceptTask, completeTask, rejectTask, transferTask, submitReport,
     audit, syncAudit,
+    insights, customStats, syncInsights,
     demoMode, setDemoMode, demoPlaying, setDemoPlaying, demoStep, demoAdvance, demoReset,
     p042Attention, toasts, notify,
   };

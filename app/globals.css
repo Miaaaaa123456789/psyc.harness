@@ -1014,3 +1014,74 @@ svg { flex: 0 0 auto; }
 .report-footer { display: flex; justify-content: flex-end; gap: 9px; }
 .report-footer .primary-action { display: flex; align-items: center; gap: 6px; }
 .report-empty { padding: 22px 16px; border: 1px dashed var(--line); border-radius: 12px; color: var(--muted-text); font-size: 11.5px; text-align: center; }
+
+/* ---- 洞察与自定义记录统计 ---- */
+.insight-panel { padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); display: grid; gap: 14px; }
+.ip-actions { display: flex; align-items: center; gap: 8px; }
+.ip-actions button { display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.9); font-size: 10.5px; color: var(--text); }
+.ip-actions .primary-action { border: 0; color: #fff; background: linear-gradient(135deg, #34a06e, #1f8a5b); }
+.ip-note { margin: 0; font-size: 10px; color: var(--muted-text); line-height: 1.6; }
+
+.cs-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.cs-metric { display: flex; align-items: center; gap: 10px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.75); }
+.cs-metric span { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 8px; background: rgba(109,91,210,.1); color: #5a49d6; }
+.cs-metric b { display: block; font-size: 20px; line-height: 1.15; color: var(--text); }
+.cs-metric small { font-size: 10px; color: var(--muted-text); }
+
+.cs-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.cs-bars li { display: grid; grid-template-columns: 82px 1fr auto; align-items: center; gap: 10px; }
+.cs-bar-label { font-size: 10.5px; color: var(--text); font-weight: 600; }
+.cs-bar-track { height: 8px; border-radius: 999px; background: rgba(43,47,58,.07); overflow: hidden; }
+.cs-bar-track i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #8d7fff, #6d5bd2); }
+.cs-bar-value { font-size: 10px; color: var(--muted-text); }
+.cs-empty { margin: 0; padding: 14px; border: 1px dashed var(--line); border-radius: 10px; font-size: 10.5px; color: var(--muted-text); text-align: center; }
+
+.cs-recent h4 { margin: 0 0 8px; font-size: 10.5px; color: var(--muted-text); font-weight: 650; }
+.cs-recent ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.cs-recent li { display: grid; grid-template-columns: 74px 1fr auto auto; align-items: center; gap: 10px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255,255,255,.7); }
+.cs-recent-type { font-size: 9.5px; padding: 2px 7px; border-radius: 999px; background: rgba(109,91,210,.1); color: #5a49d6; text-align: center; }
+.cs-recent b { font-size: 11px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-recent small { font-size: 10.5px; color: var(--text); font-weight: 650; }
+.cs-recent em { font-size: 9.5px; color: var(--muted-text); font-style: normal; }
+
+.insight-grid { display: grid; gap: 11px; }
+.insight-card { padding: 13px 15px; border: 1px solid var(--line); border-left: 3px solid var(--muted-text); border-radius: 10px; background: rgba(255,255,255,.8); }
+.insight-card.tone-high { border-left-color: #d9536a; }
+.insight-card.tone-medium { border-left-color: #e0a03a; }
+.insight-card.tone-low { border-left-color: #4a9ad4; }
+.insight-card.tone-info { border-left-color: #9aa0b0; }
+.insight-card header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ic-scene { padding: 2px 7px; border-radius: 5px; background: rgba(43,47,58,.07); font-size: 9.5px; font-weight: 700; color: var(--text); }
+.ic-level { font-size: 9.5px; color: var(--muted-text); }
+.ic-sev { display: flex; align-items: center; gap: 4px; margin-left: auto; font-size: 9.5px; font-weight: 650; }
+.tone-high .ic-sev { color: #c02b45; }
+.tone-medium .ic-sev { color: #b8791b; }
+.tone-low .ic-sev { color: #2f7fb5; }
+.tone-info .ic-sev { color: var(--muted-text); }
+.ic-toggle { margin-left: 4px; border: 0; background: none; color: var(--muted-text); display: grid; place-items: center; }
+.ic-toggle .rotated { transform: rotate(180deg); }
+.insight-card h3 { margin: 8px 0 4px; font-size: 13px; color: var(--text); }
+.ic-module { margin: 0; font-size: 10px; color: var(--muted-text); line-height: 1.6; }
+
+.ic-body { margin-top: 11px; display: grid; gap: 10px; }
+.ic-block { padding: 9px 11px; border-radius: 9px; background: rgba(43,47,58,.035); }
+.ic-block h4 { margin: 0 0 5px; font-size: 10px; font-weight: 700; color: var(--muted-text); }
+.ic-block p { margin: 0; font-size: 11px; color: var(--text); line-height: 1.7; }
+.ic-block ul { margin: 6px 0 0; padding-left: 16px; display: grid; gap: 3px; }
+.ic-block li { font-size: 10.5px; color: var(--muted-text); line-height: 1.6; }
+.ic-block.is-warn { background: rgba(224,160,58,.09); }
+.ic-block.is-warn h4, .ic-block.is-warn p { color: #8a5d10; }
+.ic-body footer { font-size: 9.5px; color: var(--muted-text); }
+
+/* ---- 快捷填报入口 & 紧凑待处理 ---- */
+.quick-report { padding: 14px 16px; display: grid; gap: 11px; }
+.quick-report header small { font-size: 10px; color: var(--muted-text); }
+.qr-grid { display: flex; flex-wrap: wrap; gap: 7px; }
+.qr-grid button { display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid rgba(31,138,91,.28); border-radius: 9px; background: rgba(31,138,91,.06); font-size: 10.5px; font-weight: 600; color: #1f8a5b; }
+.qr-grid button:hover { background: rgba(31,138,91,.12); transform: translateY(-1px); }
+
+.must-section.is-compact .must-grid { gap: 8px; }
+.must-section.is-compact .must-card { padding: 11px 13px; }
+.must-section.is-compact .must-card p { font-size: 11px; }
+.mu-more { display: flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,255,255,.8); font-size: 10px; color: var(--muted-text); }
+.mu-more:hover { color: var(--text); border-color: rgba(43,47,58,.25); }

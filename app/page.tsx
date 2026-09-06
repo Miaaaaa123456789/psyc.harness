@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import {
   Bell, Bot, BrainCircuit, Building2, ChevronRight, ClipboardCheck, ClipboardPlus, Gauge, HeartPulse, Home,
   Layers3, MessageSquareText, Network, Play, Plus, RotateCcw, Route, Search, ShieldCheck, Sparkles,
-  WandSparkles, X, type LucideIcon,
+  WandSparkles, Lightbulb, X, type LucideIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -20,6 +20,8 @@ import { OperationsView } from "@/components/workbench/operations";
 import { RoadmapView } from "@/components/workbench/roadmap";
 import { NativeVision } from "@/components/workbench/native-vision";
 import { ReportCenter } from "@/components/workbench/report-center";
+import type { ReportKind } from "@/lib/reports";
+import { InsightsView } from "@/components/workbench/insights";
 import { Mascot, useClientGsap } from "@/components/workbench/primitives";
 
 const navItems: { id: View; label: string; icon: LucideIcon }[] = [
@@ -29,13 +31,14 @@ const navItems: { id: View; label: string; icon: LucideIcon }[] = [
   { id: "tasks", label: "任务中心", icon: ClipboardCheck },
   { id: "patients", label: "患者管理", icon: HeartPulse },
   { id: "network", label: "部门协同", icon: Network },
+  { id: "insights", label: "洞察与统计", icon: Lightbulb },
   { id: "operations", label: "运行与审计", icon: Gauge },
   { id: "roadmap", label: "实施进度", icon: Route },
 ];
 
 const viewLabels: Record<View, string> = {
   overview: "今日总览", robots: "机器人团队", skills: "Skill库", tasks: "任务中心",
-  patients: "患者管理", network: "部门协同", operations: "运行与审计", roadmap: "实施进度",
+  patients: "患者管理", network: "部门协同", insights: "洞察与统计", operations: "运行与审计", roadmap: "实施进度",
 };
 
 function Toasts() {
@@ -208,6 +211,7 @@ function WorkbenchShell() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [reportKind, setReportKind] = useState<ReportKind | null>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
 
   const waiting = tasks.filter((t) => t.status === "等待人工确认").length;
@@ -290,12 +294,15 @@ function WorkbenchShell() {
 
         <div className="workspace-scroll">
           <div ref={workspaceRef} className="workspace">
-            {view === "overview" && <OverviewView />}
+            {view === "overview" && (
+              <OverviewView onReport={(kind) => { setReportKind(kind); setReportOpen(true); }} />
+            )}
             {view === "robots" && <RobotsView />}
             {view === "skills" && <SkillsView />}
             {view === "tasks" && <TasksView />}
             {view === "patients" && <PatientsView />}
             {view === "network" && <NetworkView />}
+            {view === "insights" && <InsightsView onReport={() => { setReportKind(null); setReportOpen(true); }} />}
             {view === "operations" && <OperationsView />}
             {view === "roadmap" && <RoadmapView onOpenNative={() => setNativeOpen(true)} />}
           </div>
@@ -322,7 +329,7 @@ function WorkbenchShell() {
 
       <SearchSheet open={searchOpen} onClose={() => setSearchOpen(false)} />
       <NotificationSheet open={noticeOpen} onClose={() => setNoticeOpen(false)} />
-      <ReportCenter open={reportOpen} onClose={() => setReportOpen(false)} />
+      <ReportCenter open={reportOpen} onClose={() => setReportOpen(false)} initialKind={reportKind} />
       <RolePickerSheet open={rolePickerOpen} onClose={() => setRolePickerOpen(false)} />
       <MobileMenuSheet open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} onOpenRole={() => setRolePickerOpen(true)} />
       {nativeOpen && <NativeVision onClose={() => setNativeOpen(false)} />}

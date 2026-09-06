@@ -43,7 +43,11 @@ export const TABLES = {
   pt: process.env.FEISHU_TABLE_PT ?? "tblY7D16ObUX1uMx",
   communication: process.env.FEISHU_TABLE_COMM ?? "tbl6gqWx64vQZSVO",
   followup: process.env.FEISHU_TABLE_FOLLOWUP ?? "tbltGo2RStnzrJIT",
+  custom: process.env.FEISHU_TABLE_CUSTOM ?? "tbldNWrVNwqD6auZ",
 };
+
+/** 数据来源标记：系统演示种子 vs 人工填报。统计与洞察只看「人工填报」 */
+export const SOURCE_MANUAL = "人工填报";
 
 const ROLE_REV: Record<string, HospitalTask["ownerRole"]> = {
   医生端: "doctor", 护士端: "nurse", 治疗师端: "therapist", 患者端: "patient",
@@ -330,11 +334,12 @@ const REPORT_TABLE: Record<ReportKind, string> = {
   pt: TABLES.pt,
   communication: TABLES.communication,
   followup: TABLES.followup,
+  custom: TABLES.custom,
 };
 
 /** 填报表单值 → 飞书表字段（select 传数组，datetime 传毫秒时间戳）。
  *  上报人：表单显式选择值优先；不在花名册内时回落当前登录角色默认责任人。 */
-function reportFields(kind: ReportKind, p: ReportPayload, actor: string, roleId?: string | null): Record<string, unknown> {
+function buildReportFields(kind: ReportKind, p: ReportPayload, actor: string, roleId?: string | null): Record<string, unknown> {
   const id = `${REPORT_KINDS[kind].idPrefix}-${Date.now()}`;
   const s = (k: string) => String(p[k] ?? "").trim();
   const reporter = REPORTERS.includes(s("上报人"))
@@ -454,7 +459,25 @@ function reportFields(kind: ReportKind, p: ReportPayload, actor: string, roleId?
         护士姓名: [reporter],
         备注: s("备注"),
       };
+    /* 自定义记录：由用户自由定义记录内容，统计页只统计这一类与「人工填报」的业务记录 */
+    case "custom":
+      return {
+        记录编号: id,
+        记录类型: [s("记录类型") || "其他"],
+        标题: s("标题"),
+        内容: s("内容"),
+        数值: Number(s("数值")) || 0,
+        单位: s("单位"),
+        记录人: [reporter],
+        记录时间: nowLabel(),
+        标签: s("标签"),
+      };
   }
+}
+
+/** 统一在写入字段上标记「人工填报」，用于与系统演示种子数据区分（统计与洞察只看人工填报） */
+function reportFields(kind: ReportKind, p: ReportPayload, actor: string, roleId?: string | null): Record<string, unknown> {
+  return { ...buildReportFields(kind, p, actor, roleId), 数据来源: [SOURCE_MANUAL] };
 }
 
 /** 填报联动规则：高危安全事件 / 异常给药 → 自动生成 02 表任务推给医生端 */

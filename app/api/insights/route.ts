@@ -1,0 +1,23 @@
+import { NextResponse } from "next/server";
+import { driver } from "@/lib/server/db";
+import { computeInsights } from "@/lib/server/insights";
+import { sortInsights } from "@/lib/insights";
+
+export const dynamic = "force-dynamic";
+
+/**
+ * GET /api/insights —— 洞察卡与自定义记录统计。
+ *
+ * 口径：只统计「人工填报」来源的记录，系统演示种子数据一律排除。
+ * 洞察结构遵循飞书《洞察行动矩阵》：洞察与证据 / 数据依据 / 建议行动 / 人工边界，
+ * 数据不足时带 uncertainty 降级说明，不编造结论。
+ */
+export async function GET() {
+  try {
+    const { insights, custom, source } = await computeInsights();
+    return NextResponse.json({ insights: sortInsights(insights), custom, source, driver: driver() });
+  } catch (err) {
+    console.error("[api/insights] 读取失败：", err);
+    return NextResponse.json({ insights: [], custom: null, source: "none", driver: driver() });
+  }
+}

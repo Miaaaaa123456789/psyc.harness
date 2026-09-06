@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef } from "react";
-import { ArrowRight, Bell, Bot, CalendarDays, CheckCircle2, ClipboardCheck, Fingerprint, HeartPulse, Sparkles, Timer, WalletCards, Workflow } from "lucide-react";
+import { ArrowRight, Bell, Bot, CalendarDays, CheckCircle2, ClipboardCheck, ClipboardPlus, Fingerprint, HeartPulse, Sparkles, Timer, WalletCards, Workflow } from "lucide-react";
 import { useWorkbench } from "@/lib/store";
 import { eventStream, robots, type HospitalTask } from "@/lib/hospital";
+import { REPORT_KINDS, ROLE_REPORTS, type ReportKind } from "@/lib/reports";
 import { IOBlock, PageHeading, RiskBadge, TaskStatusPill, useClientGsap, MascotNote } from "./primitives";
 
 function ActionSummary() {
@@ -63,6 +64,29 @@ function MustHandleCard({ task }: { task: HospitalTask }) {
         <button className="btn-reject" onClick={openDetail}>驳回</button>
       </footer>
     </article>
+  );
+}
+
+
+/** 快捷填报入口：按当前角色可填的表单直接打开填报中心，避免演示待办挤占主视野 */
+function QuickReport({ onReport }: { onReport: (kind: ReportKind) => void }) {
+  const { role } = useWorkbench();
+  const kinds = ROLE_REPORTS[role.id] ?? [];
+  if (!kinds.length) return null;
+  return (
+    <section className="quick-report panel">
+      <header className="panel-head-compact">
+        <div><span>QUICK INPUT</span><b>快捷填报</b></div>
+        <small>写入后统计与洞察立即更新</small>
+      </header>
+      <div className="qr-grid">
+        {kinds.map((k) => (
+          <button key={k} onClick={() => onReport(k)}>
+            <ClipboardPlus size={13} />{REPORT_KINDS[k].label}
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -128,9 +152,10 @@ function EventFlow() {
   );
 }
 
-export function OverviewView() {
+export function OverviewView({ onReport }: { onReport: (kind: ReportKind) => void }) {
   const { role, tasks, setView } = useWorkbench();
-  const waiting = tasks.filter((t) => t.status === "等待人工确认").slice(0, 3);
+  const waitingCount = tasks.filter((t) => t.status === "等待人工确认").length;
+  const waiting = tasks.filter((t) => t.status === "等待人工确认").slice(0, 2);
   const workspaceRef = useRef<HTMLDivElement>(null);
   useClientGsap((gsap) => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -157,15 +182,17 @@ export function OverviewView() {
         <IOBlock icon={Sparkles} kind="OUTPUT / 系统返还给我什么" title="你将获得" items={role.outputs} tone="out" />
       </section>
 
-      <section className="must-section">
+      <QuickReport onReport={onReport} />
+
+      <section className="must-section is-compact">
         <header className="section-head">
-          <div><span>MUST HANDLE TODAY</span><h2>今日必须处理</h2></div>
-          <span className="section-count">{waiting.length} 项等待确认</span>
+          <div><span>MUST HANDLE TODAY</span><h2>今日待确认</h2></div>
+          <button className="mu-more" onClick={() => setView("tasks")}>全部 {waitingCount} 项<ArrowRight size={12} /></button>
         </header>
         <div className="must-grid">
           {waiting.length
             ? waiting.map((t) => <MustHandleCard key={t.id} task={t} />)
-            : <div className="must-done"><CheckCircle2 size={18} /><div><b>当前没有等待你确认的任务</b><small>机器人仍在持续监测，有异常会第一时间提醒。</small></div></div>}
+            : <div className="must-done"><CheckCircle2 size={16} /><div><b>当前没有等待你确认的任务</b><small>机器人持续监测中，有异常会立即提醒。</small></div></div>}
         </div>
       </section>
 

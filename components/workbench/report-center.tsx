@@ -1,14 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ClipboardPlus, ShieldAlert, Pill, HeartPulse, Route, Send, Zap, MessagesSquare, PhoneCall, type LucideIcon } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ClipboardPlus, ShieldAlert, Pill, HeartPulse, Route, Send, Zap, MessagesSquare, PhoneCall, PenLine, type LucideIcon } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useWorkbench } from "@/lib/store";
 import { patients } from "@/lib/hospital";
 import {
   BUTLER_DEPTS, BUTLER_TYPES, COMM_FEEDBACKS, COMM_METHODS, COMM_RELATIONS, COMM_TARGETS, COMM_TOPICS,
-  FOLLOWUP_METHODS, FOLLOWUP_RISK_LEVELS,
+  CUSTOM_TYPES, FOLLOWUP_METHODS, FOLLOWUP_RISK_LEVELS,
   MED_ALERT_RESULTS, MED_RESULTS, PT_ABNORMAL_STATUS, PT_CLINICAL_REASONS, PT_DURING_OBS, PT_MODALITIES,
   PT_NONCOMPLETE_REASONS, PT_POST_FEEDBACK, PT_SESSION_STATUS, PT_WILLINGNESS,
   REPORTERS, REPORT_KINDS, ROLE_REPORTER, ROLE_REPORTS,
@@ -18,7 +18,7 @@ import {
 
 const KIND_ICONS: Record<ReportKind, LucideIcon> = {
   safety: ShieldAlert, medication: Pill, therapy: HeartPulse, butler: Route,
-  pt: Zap, communication: MessagesSquare, followup: PhoneCall,
+  pt: Zap, communication: MessagesSquare, followup: PhoneCall, custom: PenLine,
 };
 
 /** 填报命中这些条件时，服务端会自动生成任务工单推给医生端 */
@@ -112,6 +112,15 @@ const FORM_DEFS: Record<ReportKind, FieldDef[]> = {
     { key: "对象反馈", label: "对象反馈", type: "chips", options: COMM_FEEDBACKS, required: true },
     { key: "备注", label: "备注", type: "textarea", placeholder: "后续跟进安排…" },
   ],
+  /* 自定义记录：由填写人自由定义记录内容，写入 16 表并参与统计页汇总 */
+  custom: [
+    { key: "记录类型", label: "记录类型", type: "chips", options: CUSTOM_TYPES, required: true },
+    { key: "标题", label: "标题", type: "text", required: true, placeholder: "一句话说明记录了什么" },
+    { key: "内容", label: "内容", type: "textarea", required: true, placeholder: "记录的具体内容、过程或结论…" },
+    { key: "数值", label: "数值（选填，便于统计）", type: "text", placeholder: "如 3" },
+    { key: "单位", label: "单位（选填）", type: "text", placeholder: "如 次 / 人 / 分钟" },
+    { key: "标签", label: "标签（选填）", type: "text", placeholder: "多个标签用逗号分隔，便于后续筛选" },
+  ],
   /* 出院随访：按《出院患者随访登记台账》13 列；序号自动生成，护士姓名取上报人 */
   followup: [
     { key: "姓名", label: "患者姓名", type: "text", required: true, placeholder: "出院患者姓名" },
@@ -128,11 +137,20 @@ const FORM_DEFS: Record<ReportKind, FieldDef[]> = {
   ],
 };
 
-export function ReportCenter({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function ReportCenter({
+  open,
+  onClose,
+  initialKind = null,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** 外部指定打开时默认选中的表单类型（用于页面内的快捷填报入口） */
+  initialKind?: ReportKind | null;
+}) {
   const { role, submitReport } = useWorkbench();
   const kinds = ROLE_REPORTS[role.id] ?? [];
   const defaultReporter = ROLE_REPORTER[role.id] ?? role.name;
-  const [kind, setKind] = useState<ReportKind | null>(null);
+  const [kind, setKind] = useState<ReportKind | null>(initialKind);
   const [reporter, setReporter] = useState("");
   const [values, setValues] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -148,6 +166,9 @@ export function ReportCenter({ open, onClose }: { open: boolean; onClose: () => 
   );
 
   const pick = (k: ReportKind) => { setKind(k); setValues({}); };
+
+  // 每次从外部打开时，按传入的快捷类型定位到对应表单
+  useEffect(() => { if (open) { setKind(initialKind); setValues({}); } }, [open, initialKind]);
   const set = (key: string, v: string) => setValues((prev) => ({ ...prev, [key]: v }));
 
   const submit = async () => {

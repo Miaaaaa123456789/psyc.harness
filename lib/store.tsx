@@ -82,13 +82,16 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  /* 洞察与自定义记录统计：数据来自 /api/insights，只统计人工填报记录 */
-  const syncInsights = useCallback(() => {
-    fetch("/api/insights", { cache: "no-store" })
+  /* 洞察与自定义记录统计：数据来自 /api/insights，只统计人工填报记录。
+   * scope="stats" 只刷新自定义记录统计（快，填报提交后即时用）；
+   * scope="full" 连洞察卡一起重算（读 8 张业务表较慢，走 60s 轮询）。 */
+  const syncInsights = useCallback((scope: "stats" | "full" = "full") => {
+    const qs = scope === "stats" ? "?scope=stats" : "";
+    fetch(`/api/insights${qs}`, { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { insights?: Insight[]; custom?: CustomStats } | null) => {
-        if (data?.insights) setInsights(data.insights);
         if (data?.custom) setCustomStats(data.custom);
+        if (scope === "full" && data?.insights) setInsights(data.insights);
       })
       .catch(() => {
         // 离线或静态导出时保持空列表
@@ -204,7 +207,8 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
         notify(`已联动生成任务 ${data.taskId}，推送至医生端确认`, "info");
         syncFromServer();
       }
-      syncInsights();
+      // 轻量刷新：只重算自定义记录统计，避免等 8 张业务表
+      syncInsights("stats");
       return true;
     } catch (err) {
       notify(`填报失败：${err instanceof Error ? err.message : "网络错误"}`, "warn");

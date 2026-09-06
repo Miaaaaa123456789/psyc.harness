@@ -12,9 +12,12 @@ export const dynamic = "force-dynamic";
  * 洞察结构遵循飞书《洞察行动矩阵》：洞察与证据 / 数据依据 / 建议行动 / 人工边界，
  * 数据不足时带 uncertainty 降级说明，不编造结论。
  */
-export async function GET() {
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  // scope=stats 只查自定义记录表（快），用于填报提交后即时刷新统计；默认 full 计算全部洞察
+  const scope = searchParams.get("scope") === "stats" ? "stats" : "full";
   try {
-    const { insights, custom, source } = await computeInsights();
+    const { insights, custom, source } = await computeInsights(scope);
     return NextResponse.json({ insights: sortInsights(insights), custom, source, driver: driver() });
   } catch (err) {
     console.error("[api/insights] 读取失败：", err);

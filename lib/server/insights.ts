@@ -408,7 +408,11 @@ function customStats(rows: Row[]): CustomStats {
  * 口径：只统计「人工填报」来源的记录，系统演示种子数据一律排除；
  * bitable 不可用时返回全部降级卡。
  */
-export async function computeInsights(): Promise<{
+/**
+ * @param scope "stats" 只统计自定义记录（快，1 次表查询，用于填报后即时刷新）；
+ *              "full"  计算全部洞察卡（需读 8 张业务表，较慢，用于轮询）
+ */
+export async function computeInsights(scope: "stats" | "full" = "full"): Promise<{
   insights: Insight[];
   custom: CustomStats;
   source: InsightsSource;
@@ -417,6 +421,11 @@ export async function computeInsights(): Promise<{
   if (!bitableEnabled()) {
     const scenes: InsightScene[] = ["D01", "D02", "D04", "D06", "D07", "H01", "H02", "H06"];
     return { insights: scenes.map(noData), custom: emptyCustom, source: "none" };
+  }
+
+  if (scope === "stats") {
+    const customRecs = await listRecords(TABLES.custom);
+    return { insights: [], custom: customStats(customRecs.map((r) => r.fields)), source: "bitable" };
   }
 
   const [safety, med, pt, comm, followup, tasks, audit, custom] = await Promise.all([

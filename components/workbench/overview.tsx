@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, type CSSProperties } from "react";
 import {
   AlertTriangle, ArrowRight, Bell, CalendarCheck2, CheckCircle2, ChevronRight, ClipboardCheck,
-  ClipboardPlus, Crown, FileSearch, HeartPulse, Layers3, Lightbulb, Sparkles, Target, TrendingDown, Zap,
+  ClipboardPlus, Crown, FileSearch, HeartPulse, Layers3, Lightbulb, Network, Siren, Sparkles, Target, TrendingDown, Zap,
 } from "lucide-react";
 import { useWorkbench } from "@/lib/store";
-import { type HospitalTask } from "@/lib/hospital";
+import { departments, type HospitalTask } from "@/lib/hospital";
 import { REPORT_KINDS, ROLE_REPORTS, type ReportKind } from "@/lib/reports";
 import {
   COPILOT_INSIGHTS, DECISION_PROPOSALS, OUTCOME_REVIEWS, PATIENT_CHANGES, STRATIFICATIONS,
@@ -42,6 +42,91 @@ function DecisionMetrics() {
           </button>
         );
       })}
+    </section>
+  );
+}
+
+/* ---------- AI 经营诊断：由仓库内任务与部门数据实时计算 ---------- */
+function BusinessDiagnosis() {
+  const { tasks, setView } = useWorkbench();
+  const terminal = ["已完成", "已驳回"];
+  const open = tasks.filter((t) => !terminal.includes(t.status));
+  const waiting = open.filter((t) => t.status === "等待人工确认");
+  const critical = open.filter((t) => t.risk === "高");
+  const overdue = open.filter((t) => t.status === "已超时");
+  const completed = tasks.filter((t) => t.status === "已完成").length;
+  const closureRate = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
+  const operatingDepts = departments.filter((d) => d.name !== "院领导");
+  const blocked = operatingDepts.filter((d) => d.waitingOnOthers.length > 0);
+  const unclosed = operatingDepts.reduce((sum, d) => sum + d.unclosed, 0);
+  const loadPeak = [...operatingDepts].sort((a, b) => b.load - a.load)[0];
+
+  const statusBars = [
+    { label: "仍在途", value: open.length, total: tasks.length, tone: "danger" },
+    { label: "等待人工确认", value: waiting.length, total: tasks.length, tone: "warn" },
+    { label: "已完成", value: completed, total: tasks.length, tone: "good" },
+  ];
+
+  return (
+    <section className="biz-diagnosis panel" aria-label="AI经营诊断">
+      <header className="biz-head">
+        <div>
+          <span className="biz-kicker"><Siren size={13} /> AI BUSINESS DIAGNOSIS</span>
+          <h2>经营诊断：当前首要矛盾不是任务少，而是任务进不了闭环</h2>
+          <p>基于当前任务池与部门协同数据自动计算；红色仅标记必须立即处理的问题。</p>
+        </div>
+        <button onClick={() => setView("insights")}>进入诊断中心<ArrowRight size={13} /></button>
+      </header>
+
+      <div className="biz-visuals">
+        <article className="biz-radar is-critical">
+          <div className="biz-risk-ring" style={{ "--score": `${Math.round((open.length / Math.max(tasks.length, 1)) * 100)}%` } as CSSProperties}>
+            <strong>{open.length}<small>/{tasks.length}</small></strong><span>任务在途</span>
+          </div>
+          <div>
+            <b><AlertTriangle size={15} />高风险任务卡在人工确认</b>
+            <strong>{critical.length} 项</strong>
+            <p>P-042 的护理现场核查与医生用药复核尚未确认，安全风险集中在同一患者、同一事件链。</p>
+          </div>
+        </article>
+
+        <article className="biz-flow-card">
+          <header><b>任务漏斗</b><strong className="text-red">闭环率 {closureRate}%</strong></header>
+          <div className="biz-bars">
+            {statusBars.map((s) => (
+              <div key={s.label}>
+                <span>{s.label}</span>
+                <i><em className={s.tone} style={{ width: `${(s.value / Math.max(s.total, 1)) * 100}%` }} /></i>
+                <b>{s.value}</b>
+              </div>
+            ))}
+          </div>
+          <small>{overdue.length} 项已超时 · “已收到”不能代替“已解决”</small>
+        </article>
+
+        <article className="biz-flow-card">
+          <header><b>协作阻塞面</b><strong className="text-red">{blocked.length}/{operatingDepts.length} 部门</strong></header>
+          <div className="biz-dept-grid">
+            {operatingDepts.map((d) => <span key={d.name} className={d.unclosed >= 3 || d.load > 70 ? "hot" : ""}>{d.name}<b>{d.unclosed}</b></span>)}
+          </div>
+          <small>共 {unclosed} 个部门未闭环事项 · 峰值负荷 {loadPeak.name} {loadPeak.load}%</small>
+        </article>
+      </div>
+
+      <div className="biz-calls">
+        <details open className="biz-call critical">
+          <summary><span>01</span><b>立即止损：先清空 P-042 的两个高风险人工确认点</b><em>今天</em></summary>
+          <div><p><strong>判断：</strong>同一患者的拒药、睡眠碎片化、HRV下降和情绪波动同时指向安全事件；护理与医疗两个确认点都未通过，继续等待会放大风险窗口。</p><p><strong>动作：</strong>护理部30分钟内完成现场核查，医疗部12:00前统一 eMAR、药卡与患者自述；临床安全负责人只在复评完成后关闭事件。</p><p><strong>验证：</strong>2项高风险任务由“等待人工确认”转为“已完成”，并留下复评记录。</p></div>
+        </details>
+        <details className="biz-call warning">
+          <summary><span>02</span><b>闭环率只有 {closureRate}%：任务中心正在变成待办仓库</b><em>24小时</em></summary>
+          <div><p><strong>判断：</strong>{open.length}项任务仍在途、{waiting.length}项等待确认，说明瓶颈发生在人工接收与结果回写，不在AI发现能力。</p><p><strong>动作：</strong>运营按“高风险→超时→临近截止”重排队列；每项必须同时有主责人、截止时间和复评节点。</p><p><strong>验证：</strong>在途任务降至3项以内，超时清零，完成率提升至50%以上。</p></div>
+        </details>
+        <details className="biz-call warning">
+          <summary><span>03</span><b>{blocked.length}个部门全部在等别人：这是接口问题，不是单点执行问题</b><em>本周</em></summary>
+          <div><p><strong>判断：</strong>所有业务部门均记录跨部门等待；{loadPeak.name}负荷最高且未闭环最多，继续平均派单会把瓶颈压向一线。</p><p><strong>动作：</strong>每天固定两次跨部门清障，只处理“等待谁、等什么、最晚何时”；住院病区新任务优先分流或延后非紧急项。</p><p><strong>验证：</strong>有等待部门数由{blocked.length}降至4以内，{loadPeak.name}负荷回落至70%以下。</p></div>
+        </details>
+      </div>
     </section>
   );
 }
@@ -215,6 +300,8 @@ export function OverviewView({ onReport }: { onReport: (kind: ReportKind) => voi
       />
 
       {!isFamily && <DecisionMetrics />}
+
+      {!isFamily && <BusinessDiagnosis />}
 
       {isFamily ? (
         <EmptyState title="患者家属端从这里进入" note="点击右上「进入治疗航图」查看经医护确认的治疗变化、康复进展与配合事项。" />

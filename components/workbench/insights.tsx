@@ -2,10 +2,11 @@
 
 import { useRef, useState } from "react";
 import {
-  AlertTriangle, BarChart3, ChevronDown, ClipboardPlus, Database, Info, Lightbulb,
-  RefreshCw, ShieldAlert, Users, type LucideIcon,
+  AlertTriangle, ArrowRight, BarChart3, ChevronDown, ClipboardPlus, Database, Info, Lightbulb,
+  Network, RefreshCw, ShieldAlert, Siren, Target, Users, type LucideIcon,
 } from "lucide-react";
 import { useWorkbench } from "@/lib/store";
+import { departments } from "@/lib/hospital";
 import { LEVEL_LABEL, SEVERITY_LABEL, insightsForRole, type Insight, type InsightSeverity } from "@/lib/insights";
 import { PageHeading, useClientGsap } from "./primitives";
 
@@ -125,6 +126,74 @@ function InsightCard({ item }: { item: Insight }) {
   );
 }
 
+const DEPARTMENT_ACTION: Record<string, { diagnosis: string; action: string }> = {
+  "门诊中心": { diagnosis: "复诊复核依赖医疗部，入口有量、出口受阻。", action: "把复诊前用药不一致设为到诊前必清项，未确认不得进入常规复诊队列。" },
+  "住院病区": { diagnosis: "负荷全院最高，且P-042安全事件正在占用一线确认能力。", action: "暂停非紧急新增任务，先完成拒药与情绪波动现场复评，再恢复常规队列。" },
+  "医疗部": { diagnosis: "高负荷叠加两类复核：用药冲突与检查回报，医生确认成为主瓶颈。", action: "12:00前合并同患者复核，按风险一次决策，避免重复打开病例。" },
+  "护理部": { diagnosis: "护理上报已发生，但现场核查仍在等待，发现速度快于处置速度。", action: "高风险上报后自动进入30分钟倒计时；超时直接升级值班负责人。" },
+  "心理治疗中心": { diagnosis: "当前负荷不高，问题在等待患者当日会谈结果，资源尚有承接空间。", action: "承接病区分流的非紧急沟通任务，会谈结束即结构化回传靶点变化。" },
+  "检查与药房": { diagnosis: "LIS延迟让医疗部无法完成检查复核，是典型上游数据阻塞。", action: "建立结果回报超时清单；接口未恢复时启用人工回报备用通道。" },
+  "健康管理中心": { diagnosis: "P-051连续3天缺院外睡眠数据，随访正在失去判断依据。", action: "18:00前更换合规联络渠道；未接通只标记信息不可得，不直接升高临床风险。" },
+  "管家与运营": { diagnosis: "各部门都有等待项，运营目前缺少统一清障节奏。", action: "每日两次只开15分钟清障会，逐项确认等待对象、最晚时间与备用通道。" },
+};
+
+function ExecutiveDiagnosis() {
+  const { tasks, setView } = useWorkbench();
+  const open = tasks.filter((t) => !["已完成", "已驳回"].includes(t.status));
+  const high = open.filter((t) => t.risk === "高");
+  const waiting = open.filter((t) => t.status === "等待人工确认");
+  const overdue = open.filter((t) => t.status === "已超时");
+  const business = departments.filter((d) => d.name !== "院领导");
+  const maxLoad = Math.max(...business.map((d) => d.load), 1);
+
+  return (
+    <section className="ai-command panel">
+      <header className="ai-command-head">
+        <div><span><Siren size={13} /> AI DIAGNOSIS FIRST</span><h2>先处理红色问题，再谈效率优化</h2><p>任务、部门负荷与跨部门等待三组数据交叉诊断</p></div>
+        <div className="ai-critical-count"><b>{high.length}</b><span>重大问题</span></div>
+      </header>
+
+      <div className="ai-signal-grid">
+        <article className="ai-signal critical"><span>安全风险</span><b>{high.length}</b><p>高风险任务未闭环</p><em>都集中于 P-042</em></article>
+        <article className="ai-signal critical"><span>人工闸门</span><b>{waiting.length}</b><p>项等待确认</p><em>发现没有转成行动</em></article>
+        <article className={overdue.length ? "ai-signal critical" : "ai-signal"}><span>超时暴露</span><b>{overdue.length}</b><p>项已经超时</p><em>需从常规队列剥离</em></article>
+        <article className="ai-signal warning"><span>协作阻塞</span><b>{business.length}</b><p>个部门在等待</p><em>全链路接口性问题</em></article>
+      </div>
+
+      <div className="ai-verdict critical">
+        <AlertTriangle size={18} />
+        <div><b>最危险的不是“数据异常”，而是异常已经被识别、责任人仍未完成确认。</b><p>如果P-042的护理核查和用药复核继续分散处理，系统会持续产出提醒，但临床风险窗口不会缩短。</p></div>
+        <button onClick={() => setView("tasks")}>处理高风险任务<ArrowRight size={12} /></button>
+      </div>
+
+      <section className="dept-diagnosis">
+        <header><div><span>DEPARTMENT DIAGNOSIS</span><b>分部门业务诊断</b></div><small>柱长=负荷 · 数字=未闭环 · 点击展开动作</small></header>
+        <div className="dept-diagnosis-list">
+          {business.map((d) => {
+            const tone = d.load > 70 || d.unclosed >= 3 ? "critical" : d.load > 60 || d.unclosed >= 2 ? "warning" : "watch";
+            const copy = DEPARTMENT_ACTION[d.name];
+            return (
+              <details key={d.name} className={`dept-row ${tone}`} open={tone === "critical"}>
+                <summary>
+                  <span className="dept-name">{d.name}</span>
+                  <span className="dept-load"><i><em style={{ width: `${(d.load / maxLoad) * 100}%` }} /></i><b>{d.load}%</b></span>
+                  <span className="dept-open">{d.unclosed} 未闭环</span>
+                  <ChevronDown size={14} />
+                </summary>
+                <div>
+                  <p><strong>AI判断</strong>{copy?.diagnosis ?? d.waitingOnOthers[0]}</p>
+                  <p><strong>卡点证据</strong>{d.waitingOnOthers.join("；")}</p>
+                  <p><strong>必须动作</strong>{copy?.action ?? "明确责任人与完成时限，并在任务中心回写结果。"}</p>
+                </div>
+              </details>
+            );
+          })}
+        </div>
+      </section>
+    </section>
+  );
+}
+
 export function InsightsView({ onReport }: { onReport: () => void }) {
   const { role, insights, syncInsights } = useWorkbench();
   const visible = insightsForRole(insights, role.id);
@@ -147,6 +216,8 @@ export function InsightsView({ onReport }: { onReport: () => void }) {
         }
       />
 
+      <ExecutiveDiagnosis />
+
       <CustomStatsPanel onReport={onReport} />
 
       <section ref={ref} className="insight-panel">
@@ -154,7 +225,7 @@ export function InsightsView({ onReport }: { onReport: () => void }) {
           <div><span>INSIGHT MATRIX</span><b>洞察卡（{visible.length} 条）</b></div>
           <button onClick={syncInsights}><RefreshCw size={13} />刷新</button>
         </header>
-        <p className="ip-note">按《洞察行动矩阵》D/H 场景生成：洞察与证据 → 建议行动 → 人工边界；数据不足时给出降级说明，不做推测。</p>
+        <p className="ip-note">下方为人工填报数据生成的临床洞察；上方经营诊断则实时读取仓库任务池与部门协同数据。数据不足时明确降级，不做推测。</p>
         <div className="insight-grid">
           {visible.length
             ? visible.map((i) => <InsightCard key={i.scene} item={i} />)

@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Bot, CheckCircle2, Database, Fingerprint, Gauge, ServerCog, ShieldCheck, Timer } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle2, Database, Fingerprint, Gauge, Network, ServerCog, ShieldCheck, Timer } from "lucide-react";
 import { auditLog, costMeasures, departments, hisInterfaces, techLayers } from "@/lib/hospital";
 import { useWorkbench } from "@/lib/store";
 import { PageHeading } from "./primitives";
@@ -9,12 +9,16 @@ export function OperationsView() {
   const { tasks } = useWorkbench();
   const closed = tasks.filter((t) => t.status === "已完成").length;
   const closureRate = Math.round((closed / tasks.length) * 100);
+  const waiting = tasks.filter((t) => t.status === "等待人工确认").length;
+  const overdue = tasks.filter((t) => t.status === "已超时").length;
+  const operatingDepts = departments.filter((d) => d.name !== "院领导");
+  const blocked = operatingDepts.filter((d) => d.waitingOnOthers.length > 0).length;
 
   const metrics = [
-    { label: "今日任务总量", value: String(tasks.length), note: "含机器人处理中", icon: Activity },
-    { label: "任务闭环率", value: `${closureRate}%`, note: "闭环 / 全部任务", icon: CheckCircle2 },
-    { label: "平均响应时效", value: "6.4 分钟", note: "生成 → 接受", icon: Timer },
-    { label: "机器人有效率", value: "91%", note: "人工确认通过 / 全部输出", icon: Bot },
+    { label: "今日任务总量", value: String(tasks.length), note: "当前任务池", icon: Activity, hot: false },
+    { label: "任务闭环率", value: `${closureRate}%`, note: `${closed}项完成 / ${tasks.length}项`, icon: CheckCircle2, hot: closureRate < 50 },
+    { label: "等待人工确认", value: String(waiting), note: `${overdue}项已经超时`, icon: Timer, hot: waiting > 0 },
+    { label: "跨部门阻塞", value: `${blocked}/${operatingDepts.length}`, note: "存在明确等待对象", icon: Network, hot: blocked === operatingDepts.length },
   ];
 
   return (
@@ -22,13 +26,13 @@ export function OperationsView() {
       <PageHeading
         eyebrow="OPERATIONS & AUDIT"
         title="运行与审计"
-        description="低成本落地：先把现有系统变成机器人可安全调用的能力，再逐步扩大自动化边界。"
+        description="先看风险是否闭环，再看资源是否高效。所有指标均从当前任务池与部门数据实时计算。"
       />
       <div className="ops-metrics">
         {metrics.map((m) => {
           const Icon = m.icon;
           return (
-            <div key={m.label} className="panel ops-metric">
+            <div key={m.label} className={`panel ops-metric ${m.hot ? "is-critical" : ""}`}>
               <span><Icon size={16} /></span>
               <p><b>{m.value}</b><small>{m.label}</small></p>
               <em>{m.note}</em>
@@ -36,6 +40,11 @@ export function OperationsView() {
           );
         })}
       </div>
+
+      <section className="ops-alert panel">
+        <AlertTriangle size={20} />
+        <div><span>AI 经营判断</span><b>闭环率 {closureRate}% 且 {blocked} 个部门全部存在等待：继续增加机器人提示，只会扩大待办堆积。</b><p>本周经营动作应从“增加发现量”切换为“压缩人工确认时长”：高风险30分钟接收、超时单独升级、跨部门等待每日两次清障。</p></div>
+      </section>
 
       <div className="ops-columns">
         <section className="panel">
@@ -45,7 +54,7 @@ export function OperationsView() {
               <p key={d.name}>
                 <span>{d.name}</span>
                 <span className={`load-bar ${d.load > 70 ? "hot" : ""}`}><i style={{ width: `${d.load}%` }} /></span>
-                <b>{d.load}%</b>
+                <b>{d.load}% · {d.unclosed}未闭环</b>
               </p>
             ))}
           </div>

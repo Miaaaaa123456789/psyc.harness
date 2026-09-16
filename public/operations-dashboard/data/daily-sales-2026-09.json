@@ -14,7 +14,7 @@
     {"month":"2026-05","revenueWan":220.2,"targetWan":240,"completionPct":91.7,"yoyPct":25.8,"midMonthThrough":"2026-05-17","visibleRevenueWan":114.4,"weeklyRange":"2026-05-11/2026-05-17","weeklyRevenueWan":44.2,"screenshotVerified":true},
     {"month":"2026-06","revenueWan":242.5,"targetWan":240,"completionPct":101.0,"yoyPct":31.1,"screenshotVerified":true},
     {"month":"2026-07","revenueWan":265.7,"targetWan":240,"completionPct":110.7,"yoyPct":141.9,"screenshotVerified":true},
-    {"month":"2026-08","revenueWan":279},
+    {"month":"2026-08","revenueWan":245.2},
     {"month":"2026-09","through":"2026-09-14","revenueWan":97.439192,"isPartial":true}
   ],
   "totals": {"revenue": 974391.92, "outpatientRevenue": 466344.31, "inpatientRevenue": 508047.61, "firstVisits": 59, "revisits": 404, "admissions": 27, "discharges": 21},

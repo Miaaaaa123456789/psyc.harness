@@ -1,0 +1,14 @@
+{
+  "source": "WorkBuddy销售进度页截图",
+  "capturedAt": "2026-09-16",
+  "currencyUnit": "万元",
+  "note": "月总额与截图可见日明细覆盖范围不同，禁止用可见日明细反推整月拆分；历史页面门诊、住院、入院显示0，仅视为未录入拆分字段。",
+  "months": [
+    {"month":"2026-03","target":240,"revenue":214.9,"completionPct":89.6,"gap":25.1,"dailyAverage":6.9,"yoyPct":16.2,"lastYear":185,"detailRows":16,"visibleDayCount":15,"weekly":[8.9,42.9,54.3],"weekDayCoverage":[1,7,7],"weeklyBaseline":35.3,"visibleDaily":[8.9,3.5,3.8,7.6,3.3,3.7,10.5,10.5,4.4,5.6,9.3,6.1,5.3,14.9,8.8]},
+    {"month":"2026-04","target":240,"revenue":229.3,"completionPct":95.5,"gap":10.7,"dailyAverage":7.6,"yoyPct":19.4,"lastYear":192,"momPct":6.7,"detailRows":20,"visibleDayCount":19,"weekly":[31.7,55.9,59.6],"weekDayCoverage":[5,7,7],"weeklyBaseline":49.0,"visibleDaily":[7.2,4.7,4.4,3.7,11.6,7.9,7.5,8.0,4.7,3.9,12.6,11.2,8.5,6.5,9.5,5.6,4.2,14.2,11.1]},
+    {"month":"2026-05","target":240,"revenue":220.2,"completionPct":91.7,"gap":19.8,"dailyAverage":7.1,"yoyPct":25.8,"lastYear":175,"momPct":-4.0,"detailRows":18,"visibleDayCount":17,"weekly":[22.9,47.3,44.2],"weekDayCoverage":[3,7,7],"weeklyBaseline":38.1,"visibleDaily":[16.0,3.5,3.4,3.0,10.3,6.3,5.6,3.2,5.2,13.6,4.0,3.5,6.3,4.2,3.7,9.0,13.5]},
+    {"month":"2026-06","target":240,"revenue":242.5,"completionPct":101.0,"gap":-2.5,"dailyAverage":8.1,"yoyPct":31.1,"lastYear":185,"momPct":10.1,"detailRows":22,"visibleDayCount":21,"weekly":[50.8,56.2,58.7],"weekDayCoverage":[7,7,7],"weeklyBaseline":55.2,"visibleDaily":[6.2,6.0,6.8,4.6,7.7,4.0,15.6,4.7,6.8,7.5,6.0,7.2,6.5,17.5,6.9,9.0,7.8,6.3,10.6,13.6,4.6]},
+    {"month":"2026-07","target":240,"revenue":265.7,"completionPct":110.7,"gap":-25.7,"dailyAverage":8.6,"yoyPct":141.9,"lastYear":109.8,"momPct":9.6,"detailRows":31,"visibleDayCount":31,"weekly":[44.2,52.2,63.5,59.9,45.9],"weekDayCoverage":[5,7,7,7,5],"weeklyBaseline":53.1,"visibleDaily":[4.3,4.1,4.9,16.8,14.0,5.4,5.5,6.2,6.7,4.6,14.1,9.8,5.5,7.2,8.8,6.2,7.4,15.7,12.7,8.3,6.9,9.1,6.5,6.3,7.0,15.9,7.5,6.9,9.0,7.6,15.0]},
+    {"month":"2026-08","target":240,"revenue":279,"status":"legacy_total_unverified","note":"本批截图未包含8月4张页面，保留旧月总额等待复核。"}
+  ]
+}

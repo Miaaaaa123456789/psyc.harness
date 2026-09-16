@@ -1,0 +1,37 @@
+{
+  "title": "每日营业数据",
+  "dateRange": ["2026-09-01", "2026-09-14"],
+  "updatedAt": "2026-09-15T15:18:00+08:00",
+  "sourceCommit": "4f09bd0812fc943e6bc2957b0d27312d7cd236df",
+  "reportingPeriods": {
+    "week1": {"dateRange":["2026-09-01","2026-09-06"],"days":6,"revenue":452278.56,"averageDailyRevenue":75379.76,"admissions":14},
+    "week2": {"dateRange":["2026-09-07","2026-09-13"],"days":7,"revenue":486491.02,"averageDailyRevenue":69498.72,"admissions":12},
+    "latestDay": {"date":"2026-09-14","revenue":35622.34,"admissions":1}
+  },
+  "historicalMonthlyRevenue": [
+    {"month":"2026-03","revenueWan":214.9,"targetWan":240,"completionPct":89.6,"yoyPct":16.2,"screenshotVerified":true},
+    {"month":"2026-04","revenueWan":229.3,"targetWan":240,"completionPct":95.5,"yoyPct":19.4,"screenshotVerified":true},
+    {"month":"2026-05","revenueWan":220.2,"targetWan":240,"completionPct":91.7,"yoyPct":25.8,"midMonthThrough":"2026-05-17","visibleRevenueWan":114.4,"weeklyRange":"2026-05-11/2026-05-17","weeklyRevenueWan":44.2,"screenshotVerified":true},
+    {"month":"2026-06","revenueWan":242.5,"targetWan":240,"completionPct":101.0,"yoyPct":31.1,"screenshotVerified":true},
+    {"month":"2026-07","revenueWan":265.7,"targetWan":240,"completionPct":110.7,"yoyPct":141.9,"screenshotVerified":true},
+    {"month":"2026-08","revenueWan":279},
+    {"month":"2026-09","through":"2026-09-14","revenueWan":97.439192,"isPartial":true}
+  ],
+  "totals": {"revenue": 974391.92, "outpatientRevenue": 466344.31, "inpatientRevenue": 508047.61, "firstVisits": 59, "revisits": 404, "admissions": 27, "discharges": 21},
+  "days": [
+    {"date":"2026-09-01","outpatientRevenue":8329.46,"firstVisits":4,"revisits":13,"inpatientRevenue":13695.01,"inHospital":28,"admissions":2,"discharges":0,"totalRevenue":22024.47},
+    {"date":"2026-09-02","outpatientRevenue":16747.27,"firstVisits":3,"revisits":15,"inpatientRevenue":62605.00,"inHospital":27,"admissions":1,"discharges":1,"totalRevenue":79352.27},
+    {"date":"2026-09-03","outpatientRevenue":4710.35,"firstVisits":0,"revisits":14,"inpatientRevenue":35411.99,"inHospital":25,"admissions":0,"discharges":1,"totalRevenue":40122.34},
+    {"date":"2026-09-04","outpatientRevenue":31464.50,"firstVisits":8,"revisits":24,"inpatientRevenue":40703.93,"inHospital":29,"admissions":6,"discharges":2,"totalRevenue":72168.43},
+    {"date":"2026-09-05","outpatientRevenue":15041.96,"firstVisits":4,"revisits":30,"inpatientRevenue":39769.70,"inHospital":31,"admissions":2,"discharges":0,"totalRevenue":54811.66},
+    {"date":"2026-09-06","outpatientRevenue":140116.70,"firstVisits":9,"revisits":92,"inpatientRevenue":43682.69,"inHospital":30,"admissions":3,"discharges":3,"totalRevenue":183799.39},
+    {"date":"2026-09-07","outpatientRevenue":20267.31,"firstVisits":3,"revisits":16,"inpatientRevenue":39148.42,"inHospital":30,"admissions":4,"discharges":4,"totalRevenue":59415.73},
+    {"date":"2026-09-08","outpatientRevenue":21632.61,"firstVisits":3,"revisits":20,"inpatientRevenue":36448.39,"inHospital":30,"admissions":1,"discharges":1,"totalRevenue":58081.00},
+    {"date":"2026-09-09","outpatientRevenue":17044.52,"firstVisits":3,"revisits":12,"inpatientRevenue":41666.05,"inHospital":29,"admissions":1,"discharges":1,"totalRevenue":58710.57},
+    {"date":"2026-09-10","outpatientRevenue":10042.88,"firstVisits":1,"revisits":12,"inpatientRevenue":36522.53,"inHospital":28,"admissions":0,"discharges":1,"totalRevenue":46565.41},
+    {"date":"2026-09-11","outpatientRevenue":9814.03,"firstVisits":3,"revisits":17,"inpatientRevenue":38027.06,"inHospital":30,"admissions":2,"discharges":0,"totalRevenue":47841.09},
+    {"date":"2026-09-12","outpatientRevenue":18029.88,"firstVisits":4,"revisits":17,"inpatientRevenue":33831.37,"inHospital":30,"admissions":0,"discharges":0,"totalRevenue":51861.25},
+    {"date":"2026-09-13","outpatientRevenue":133002.16,"firstVisits":11,"revisits":108,"inpatientRevenue":31013.81,"inHospital":27,"admissions":4,"discharges":4,"totalRevenue":164015.97},
+    {"date":"2026-09-14","outpatientRevenue":20100.68,"firstVisits":3,"revisits":14,"inpatientRevenue":15521.66,"inHospital":24,"admissions":1,"discharges":3,"totalRevenue":35622.34}
+  ]
+}

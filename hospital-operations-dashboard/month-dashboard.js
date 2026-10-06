@@ -27,7 +27,12 @@ var _dt=new Date(_end+'T00:00:00');
 var _mon=new Date(_dt.getTime()-((_dt.getDay()===0?6:_dt.getDay()-1))*86400000);
 function _s(o){return o.getFullYear()+'-'+String(o.getMonth()+1).padStart(2,'0')+'-'+String(o.getDate()).padStart(2,'0');}
 window.__WEEK_DONE = (_dt.getDay()===0);
-return '本周（'+(+_s(_mon).slice(5,7))+'.'+(+_s(_mon).slice(8))+'—'+(+_end.slice(5,7))+'.'+(+_end.slice(8))+'）';
+/* ⚠ 周一与末日相同（本周才刚开始、只录了 1 天，如 10.5 周一）时不能写成「10.5—10.5」，
+   单日周直接写「本周（10.5）」。 */
+var _monS=_s(_mon);
+var _a=(+_monS.slice(5,7))+'.'+(+_monS.slice(8));
+var _b=(+_end.slice(5,7))+'.'+(+_end.slice(8));
+return '本周（'+(_monS===_end?_a:_a+'—'+_b)+'）';
 })();
   /* 归一化的「排除项」必须是**当前** WEEK 标签本身，否则已带标签的文案会被再追加一次：
      「本周（9.28—10.1）」→「本周（9.28—10.1）（9.28—10.1）」（周窗口滚动后实测命中，部门卡脚注重复）。

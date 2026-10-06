@@ -18,9 +18,34 @@
   var W1 = ['2026-09-01', '2026-09-06'], W2 = ['2026-09-07', '2026-09-13'],
       W3 = ['2026-09-14', '2026-09-20'], W4 = ['2026-09-21', '2026-09-27'],
       W5 = ['2026-09-28', '2026-10-04'];
-  /* ⭐ 本周＝「最后一个有数据的日期」所在周（数据至 9.30 → 9.28—10.4，进行中 3 天）；
-     上一周完整周＝W4（9.21—9.27）。与 data-import.js 的 refreshWindow() 同一口径。 */
-  var CUR = W5, PREV = W4;
+  /* ⭐⭐ 周窗口**动态推导**：本周＝「最后一个有数据的日期」所在自然周（周一—周日）；
+     上一周＝其前一周。与 data-import.js 的 refreshWindow() 同一口径。
+
+     ⚠⚠ 2026-10-06 修：原先 CUR/PREV **硬编码**为 W5/W4（9.28—10.4）。
+     数据推进到 10.5（周一，属**新的一周**）后，本周窗口仍停在 9.28—10.4
+     → 10.5 落在窗口外、周口径面板整段不更新（「本周」永远显示上一周的数）。
+     这类「窗口不跟数据滚」是本项目最常见的静默失真，务必保持动态。
+     ⚠ W1—W5 仍保留为常量：它们是**9 月报告**的周序列（月口径封顶），与「本周」语义不同。 */
+  var CUR = W5, PREV = W4;   // 初值；derive() 会按数据实际末日重算
+  function ymd(x) {
+    return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+  }
+  function addDays(d, n) {
+    var x = new Date(d + 'T12:00:00'); x.setDate(x.getDate() + n); return ymd(x);
+  }
+  /* 返回 d 所在自然周的周一（周一为一周之始） */
+  function weekStartOf(d) {
+    var x = new Date(d + 'T12:00:00');
+    var dow = x.getDay();                      // 0=周日
+    return addDays(d, -(dow === 0 ? 6 : dow - 1));
+  }
+  function refreshWindow() {
+    var rs = data.rows;
+    if (!rs || !rs.length) return;
+    var mon = weekStartOf(rs[rs.length - 1].date);
+    CUR = [mon, addDays(mon, 6)];
+    PREV = [addDays(mon, -7), addDays(mon, -1)];
+  }
   /* ⭐ 结算月（与 data-import.js 同一口径）：所有**月**维度聚合只统计 9 月。
      10.1 属 10 月账，若并入月累计 → 227.17 万被冲成 234.17 万、「已收官」失效。
      周维度不受影响：本周(system)仍取 W5＝9.28—10.4，含 10.1。 */
@@ -116,11 +141,15 @@
   }
 
   function derive() {
+    refreshWindow();                             // ⭐ 先按数据末日重算周窗口
     var month = summarize(monthRows());          // ⭐ 月口径只算 9 月
-    var current = summarize(subset(CUR[0], CUR[1]));   // ⭐ 周口径含 10.1
-    /* 上周可比区间＝与本周已发生天数相同的上周片段（同天数口径） */
+    var current = summarize(subset(CUR[0], CUR[1]));   // ⭐ 周口径（含跨月日）
+    /* 上周可比区间＝与本周已发生天数相同的上周片段（同天数口径）
+       ⚠ pcTo 必须用日期加法算；原先把月份硬编码成 '2026-09-'，
+       PREV 一旦落在别的月份（如 9.28—10.4）就会算错。 */
     var n = Math.max(1, current.days);
-    var pcTo = '2026-09-' + String(+PREV[0].slice(8) + n - 1).padStart(2, '0');
+    var pcTo = addDays(PREV[0], n - 1);
+    if (pcTo > PREV[1]) pcTo = PREV[1];
     var previousComparable = summarize(subset(PREV[0], pcTo));
     /* ⚠ W5 的自然周是 9.28—10.4，但**月口径**下只能取 9 月内的 9.28—9.30。
        否则「9月各周营业对比 / 9月周度节奏」会把 10.1 的 8.60 万算进 9 月，

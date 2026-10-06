@@ -85,15 +85,22 @@
     '2026-09-28': [34390.08, 67632.02, 5, 17, 32, 2, 3],
     '2026-09-29': [30504.20, 36850.80, 3, 12, 31, 1, 2],
     '2026-09-30': [27460.37, 48766.52, 5, 24, 34, 4, 1],
-    /* ⭐ 10.1（业主 2026-10-02 提供营收日报）。
-       ⚠ 源表当日列：门诊 105,281.13 / 在院 56,919.14（毛额 162,200.27），
-       但「当日收入合计」只记 85,973.38 —— 差额 76,226.89 正好等于 9.30 的当日合计
-       （9.30 门诊 27,460.37、在院 48,766.52 已全额计入 9 月）。即 10.1 采用跨期分摊：
-       本期归属 = 门诊(105281.13−27460.37=77820.76) + 在院(56919.14−48766.52=8152.62)
-                = 85,973.38 ✓ 与源表合计一分不差（业主 2026-10-02 确认用此口径）。
-       故此处存「本期归属额」而非毛额，保证 门诊+在院 = 当日合计 = 85,973.38。
-       [门诊, 在院, 初诊, 复诊, 在院, 入院, 出院] ← 出院＝初次1＋多次0 */
-    '2026-10-01': [77820.76, 8152.62, 7, 50, 40, 7, 1]
+    /* ⭐ 10 月营收日报（业主 2026-10-05 提供 10.1—10.4，取数含心理科）。
+       ⚠⚠ 2026-10-05 更正 10.1：此前存 [77820.76, 8152.62]（＝8.60 万）**是误读**。
+       那两个数实为源表「门诊环比」「在院环比」两列的**差额**，被当成了当日归属额：
+         门诊 105281.13 − 27460.37(9.30 门诊) = 77820.76
+         在院  56919.14 − 48766.52(9.30 在院) =  8152.62
+       二者之和 85,973.38 恰好＝毛额 162,200.27 − 9.30 合计 76,226.89，
+       看起来像「跨期分摊」，实为巧合误读。
+       ⇒ 铁证：源表 10.2 的「门诊环比 -58841.32」＝ 46439.81 − **105281.13**（10.1 全额），
+         若 10.1 当日真是 77820.76，该环比应等于 −31380.95。故源表一直是**全额**口径。
+       ⇒ **源表 10.1 当日收入合计就是 162,200.27**，且源表自身「门诊＋在院＝当日合计」成立，
+         **无需任何跨期分摊**。现按源表原值存储。
+       [门诊, 在院, 初诊, 复诊, 在院, 入院, 出院] ← 出院＝出院初次 ＋ 出院多次 */
+    '2026-10-01': [105281.13, 56919.14, 7, 50, 40, 7, 1],
+    '2026-10-02': [46439.81, 58004.60, 1, 45, 42, 3, 1],
+    '2026-10-03': [9030.53, 52909.64, 1, 10, 42, 1, 1],
+    '2026-10-04': [16872.55, 30229.12, 0, 16, 39, 0, 3]
   };
 
 
@@ -178,10 +185,13 @@
     if (ma === mb) return (+ma) + '月' + (+da) + '—' + (+db) + '日';
     return fmtCN(a) + '—' + fmtCN(b);
   }
+  /* ⚠ 区间简写：月份必须从日期里取，**不可硬编码 '9.'**
+     （原文写死 '9.' + (+d.slice(8))，跨到 10 月后 2026-10-04 被显示成「9.4」） */
   function shortRange(days) {
     if (!days || !days.length) return '';
     var a = days[0], b = days[days.length - 1];
-    var sa = '9.' + (+a.slice(8)), sb = '9.' + (+b.slice(8));
+    var sa = (+a.slice(5, 7)) + '.' + (+a.slice(8));
+    var sb = (+b.slice(5, 7)) + '.' + (+b.slice(8));
     return a === b ? sa : sa + '—' + sb;
   }
 
@@ -679,7 +689,7 @@
       if (s.missing.length) sub += '（' + shortRange(s.missing) + ' 日报待补）';
       $$('.mkt-amount').forEach(function (e) { e.innerHTML = '¥' + wan(s.tw.t, 2) + '<i>万</i>'; });
       setText('.mkt-sub', sub);
-      setText('.mkt-hero-kicker', '本周至今营业额');
+      setText('.mkt-hero-kicker', '本期营业额');
     } else {
       $$('.mkt-amount').forEach(function (e) { e.innerHTML = '—'; });
       setText('.mkt-sub', '本周暂无营收数据');
@@ -737,7 +747,7 @@
     var barCard = $$('.mkt-card').filter(function (c) { return /营收速度缺口/.test(c.textContent); })[0];
     if (barCard && barCard.querySelector('.mkt-badge')) barCard.querySelector('.mkt-badge').textContent = '缺口 ' + num(Math.max(0, s.gap), 2) + '万/日';
 
-    /* ---- 收入结构（本周至今） ---- */
+    /* ---- 收入结构（本期） ---- */
     if (s.tw.t) {
       var oPct = s.tw.o / s.tw.t * 100, iPct = s.tw.i / s.tw.t * 100;
       $$('.mkt-ring div').forEach(function (e) {
@@ -819,7 +829,7 @@
     if (ban) {
       ban.innerHTML = '<i>!</i><div><b>月度营收' + (s.monthClosed ? '已收官 · 未达目标' : (diff > 5 ? '已进入高风险区' : '进度跟踪')) + '</b><span>累计' + wan(s.mtd.t, 2) + '万，完成' + s.pct.toFixed(1) + '%；'
         + (s.monthClosed
-          ? ('9 月已收官，缺口' + num(s.leftAmt, 2) + '万。本周至今日均' + num(s.twAvg, 2) + '万。')
+          ? ('9 月已收官，缺口' + num(s.leftAmt, 2) + '万。本期日均' + num(s.twAvg, 2) + '万。')
           : ('剩余' + s.leftDays + '天需' + num(s.leftAmt, 2) + '万。当前日均' + num(s.twAvg, 2) + '万，'
              + (s.gap > 0 ? '距离达标所需日均' + num(s.need, 2) + '万仍差' + num(s.gap, 2) + '万。' : '已高于达标所需日均' + num(s.need, 2) + '万。')))
         + '</span></div>';
@@ -836,7 +846,7 @@
     var detail = $$('.dc-item');
     if (detail[0]) {
       var dp = detail[0].querySelector('p');
-      if (dp) dp.innerHTML = '完成率<b>' + s.pct.toFixed(1) + '%</b>' + (diff >= 0 ? '低于' : '高于') + '时间进度' + s.timePct.toFixed(1) + '%。本周至今日均' + num(s.twAvg, 2) + '万（' + shortRange(s.twDays) + (s.missing.length ? '，' + shortRange(s.missing) + ' 待补' : '') + '），'
+      if (dp) dp.innerHTML = '完成率<b>' + s.pct.toFixed(1) + '%</b>' + (diff >= 0 ? '低于' : '高于') + '时间进度' + s.timePct.toFixed(1) + '%。本期日均' + num(s.twAvg, 2) + '万（' + shortRange(s.twDays) + (s.missing.length ? '，' + shortRange(s.missing) + ' 待补' : '') + '），'
         + (s.delta == null ? '暂无同期对照' : '较上周同期' + wan(s.same.t, 2) + '万' + (s.delta >= 0 ? '增长' : '下降') + Math.abs(s.delta).toFixed(1) + '%') + '；即使恢复到上周水平，也难以自然完成目标，必须明确新增收入来源。';
     }
     var chain = $$('.dc-node');
@@ -867,7 +877,7 @@
       }
     }
 
-    /* ---- 营销 6 项 KPI：本周至今（营收日报口径，含入出院与门诊） ---- */
+    /* ---- 营销 6 项 KPI：本期（营收日报口径，含入出院与门诊） ---- */
     /* ⚠ 标签也必须一起写：本组 6 格原先由「经营问题总览」模块写成
        客服随访 / 标记到院 / 营销接触 / 营销入院 / 营销转化 / 在院参考，
        而这里只写值（门诊收入 / 住院收入 / 初诊 …）→ 出现「客服随访 ¥11.16万」这类
@@ -899,7 +909,7 @@
       });
     }
 
-    /* ---- 转化漏斗：本周至今 ---- */
+    /* ---- 转化漏斗：本期 ---- */
     if (s.tw.t) {
       var P2 = s.tw.p;
       var fbox = $$('.mkt-flow-box');
@@ -927,7 +937,7 @@
     var src = $('.mkt-source');
     if (src) {
       var P3 = s.tw.p;
-      src.textContent = '口径：本周至今 ' + shortRange(s.twDays) + '（各源数据截至 ' + cutTxt + '，营收日报至 ' + revTxt + '）＝营业额 ' + wan(s.tw.t, 2) + ' 万（门诊 ' + wan(s.tw.o, 2) + ' ＋ 住院 ' + wan(s.tw.i, 2) + '）、初诊 ' + P3.first + ' 人、入院 ' + P3.admit + ' 人、出院 ' + P3.disch + ' 人'
+      src.textContent = '口径：本期 ' + shortRange(s.twDays) + '（各源数据截至 ' + cutTxt + '，营收日报至 ' + revTxt + '）＝营业额 ' + wan(s.tw.t, 2) + ' 万（门诊 ' + wan(s.tw.o, 2) + ' ＋ 住院 ' + wan(s.tw.i, 2) + '）、初诊 ' + P3.first + ' 人、入院 ' + P3.admit + ' 人、出院 ' + P3.disch + ' 人'
         + (P3.inhosAt ? '，' + ((+P3.inhosAt.slice(5, 7)) + '.' + (+P3.inhosAt.slice(8))) + ' 在院 ' + P3.inhos + ' 人' : '')
         + '；对照上周同期 ' + shortRange(s.sameDays) + '（' + wan(s.same.t, 2) + ' 万）。上周完整周 ' + shortRange(s.lwDays) + ' 营收 ' + wan(s.lw.t, 2) + ' 万。月度目标 ' + MONTH_TARGET + ' 万，累计 ' + wan(s.mtd.t, 2) + ' 万（' + (s.cut ? (+s.cut.slice(5, 7)) + '月' + (+s.cut.slice(8)) + '日' : '—') + '）。导入新数据后先校验冲突，再更新看板。';
     }
@@ -1002,11 +1012,11 @@
         gap.innerHTML = '<b>9 月已收官</b>（' + s.cutD + '/' + MONTH_DAYS + ' 天）：累计 <b>' + num(s.mtd.t / 10000, 2) + ' 万</b>，'
           + '完成目标 <b>' + s.pct.toFixed(1) + '%</b>，缺口 <b>' + num(s.leftAmt, 2) + ' 万</b>；'
           + '上周完整周日均 <b>' + num(s.lwAvg / 10000, 2) + ' 万</b>、'
-          + '本周至今（' + shortRange(s.twDays) + '）日均 <b>' + num(s.twAvg, 2) + ' 万</b>。';
+          + '本期（' + shortRange(s.twDays) + '）日均 <b>' + num(s.twAvg, 2) + ' 万</b>。';
       } else {
         gap.innerHTML = '剩余 <b>' + s.leftDays + '</b> 天需 <b>' + num(s.leftAmt, 2) + ' 万</b>，'
           + '日均需 <b>' + num(s.need, 2) + ' 万</b>；上周日均 <b>' + num(s.lwAvg / 10000, 2) + ' 万</b>、'
-          + '本周至今（' + shortRange(s.twDays) + '）日均 <b>' + num(s.twAvg, 2) + ' 万</b>，'
+          + '本期（' + shortRange(s.twDays) + '）日均 <b>' + num(s.twAvg, 2) + ' 万</b>，'
           + '缺口 <b>' + num(Math.max(0, s.gap), 2) + ' 万</b>。';
       }
     }

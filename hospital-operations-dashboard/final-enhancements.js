@@ -59,7 +59,11 @@
       cwDays:cw.days, days:s.rows.length, cut:mdOf(s.updatedThrough||x.lastDate),
       /* ⚠ 收官后 scn/fcst 会退化成月累计（rem=0 时 =done），不能直接当「本周/上周完整周」用 */
       cwTotalWan:cw.total/10000, lwTotalWan:(lw?lw.total/10000:0),
-      cutShort:'9.'+(+((s.updatedThrough||x.lastDate||'').slice(8))||'')
+      /* ⚠ cutShort 的月份必须从日期取（原文硬编码 '9.'，跨月后 10.4 会显示成 9.4） */
+      cutShort: (function () {
+        var _d = String(s.updatedThrough || x.lastDate || '');
+        return _d.length >= 10 ? ((+_d.slice(5, 7)) + '.' + (+_d.slice(8))) : '';
+      })()
     };
   }
 

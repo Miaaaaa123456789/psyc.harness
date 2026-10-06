@@ -17,12 +17,18 @@
   /* ⭐ 本周标签按**实际有数据的末日**生成：数据至 10.1 →「本周（9.28—10.1）」；
      不写死 10.4，否则会让人以为 10.2—10.4 也有数据。
      ⚠ 下面 WEEK_SUFFIX / WEEK_LABEL_RE 都从 WEEK 派生，改这里即可，勿单独改一处。 */
-  var WEEK=(function(){
-    var _d=window.SEPTEMBER_REVENUE_DATA, _r=(_d&&_d.rows)||[];
-    var _last=_r.length?_r[_r.length-1].date:'';
-    var _end=_last||'2026-10-04';
-    return '本周（9.28—'+(+_end.slice(5,7))+'.'+(+_end.slice(8))+'）';
-  })();
+var WEEK=(function(){
+var _d=window.SEPTEMBER_REVENUE_DATA, _r=(_d&&_d.rows)||[];
+var _last=_r.length?_r[_r.length-1].date:'';
+var _end=_last||'2026-10-04';
+/* ⚠ 周一不可硬编码 9.28（原文写死 '本周（9.28—'，进 10 月后一旦数据末日跨到下一周就会错）。
+   改为从数据末日反推所在自然周的周一；并给出「本周是否已完整（末日＝周日）」标记。 */
+var _dt=new Date(_end+'T00:00:00');
+var _mon=new Date(_dt.getTime()-((_dt.getDay()===0?6:_dt.getDay()-1))*86400000);
+function _s(o){return o.getFullYear()+'-'+String(o.getMonth()+1).padStart(2,'0')+'-'+String(o.getDate()).padStart(2,'0');}
+window.__WEEK_DONE = (_dt.getDay()===0);
+return '本周（'+(+_s(_mon).slice(5,7))+'.'+(+_s(_mon).slice(8))+'—'+(+_end.slice(5,7))+'.'+(+_end.slice(8))+'）';
+})();
   /* 归一化的「排除项」必须是**当前** WEEK 标签本身，否则已带标签的文案会被再追加一次：
      「本周（9.28—10.1）」→「本周（9.28—10.1）（9.28—10.1）」（周窗口滚动后实测命中，部门卡脚注重复）。
      此前把排除项写死成 9.21—9.27，窗口一滚就失效。 */
@@ -63,7 +69,7 @@
     departments:[
       {key:'doctor',cls:'doctor',icon:'医',name:'医生组',desc:'住院规模与管床贡献',metric:'34 人',note:'在院 · 9.30 时点',foot:'本周入院 7 · 出院 6'},
       {key:'nursing',cls:'nursing',icon:'护',name:'护理组',desc:'治疗执行与服务兑现',metric:'95.2%',note:'物理治疗完成率（项目口径 · 9.20—9.26）',foot:'应做 495 · 未做 24'},
-      {key:'psychology',cls:'psychology',icon:'心',name:'心理咨询组',desc:'咨询承接与收入结构',metric:'60 人次',note:PWEEK+'患者接触',foot:'9.14—9.20 为 40（+50.0%）'},
+      {key:'psychology',cls:'psychology',icon:'心',name:'心理咨询组',desc:'咨询承接与收入结构',metric:'65 人次',note:PWEEK+'患者接触',foot:'9.14—9.20 为 40（+62.5%）'},
       {key:'service',cls:'service',icon:'客',name:'客服服务部',desc:'随访、到院及付费跟踪',metric:'52 条',note:PWEEK+'回访台账（已录至 9.24）',foot:'到院 18 · 34.6%'},
       {key:'marketing',cls:'marketing',icon:'营',name:'营销组',desc:'管家、工娱与渠道归集',metric:'24.56万',note:WEEK+'营业额',foot:'入院 7 · 出院 6'}
     ],
@@ -84,10 +90,15 @@
     var md=function(d){return d?(+d.slice(5,7))+'月'+(+d.slice(8))+'日':'';};
     var _ing=window.OPS_INGEST_DATE||'';
     var _ingTxt=_ing?(_ing.slice(0,4)+'年'+(+_ing.slice(5,7))+'月'+(+_ing.slice(8))+'日'):'';
-    baseData.meta={range:'9月1日—'+md(last.date)+'（报告期）',
-      updated:(_ingTxt&&_ing!==source.updatedThrough)?('数据截至 '+_ingTxt+'（营收 '+source.updatedAt+'）'):('数据截至 '+source.updatedAt)};
-    baseData.kpis=[
-      {label:'9月累计营业额',value:fmt(m.total),unit:'万元',note:'截至 '+md(last.date)+' · 完成目标 '+x.amountRate.toFixed(1)+'%'},
+/* ⚠ 月口径末日 ≠ 数据末日。9 月已收官（10-05 时数据末日已到 10.4），
+   「报告期」与「9月累计」的截止应锁定月口径末日（9.30），
+   否则会显示「9月1日—10月4日」这种自相矛盾的区间，并让人以为 9 月还在滚。
+   周口径（WEEK 营业额/入院/出院）与在院时点仍跟数据末日走，两者语义不同。 */
+var _mLast=(function(){var rr=String(source.reportRange||'');var p=rr.split('—');return (p[1]||'').trim();})()||last.date;
+baseData.meta={range:'9月1日—'+md(_mLast)+'（报告期）',
+updated:(_ingTxt&&_ing!==source.updatedThrough)?('数据截至 '+_ingTxt+'（营收 '+source.updatedAt+'）'):('数据截至 '+source.updatedAt)};
+baseData.kpis=[
+{label:'9月累计营业额',value:fmt(m.total),unit:'万元',note:'截至 '+md(_mLast)+' · 完成目标 '+x.amountRate.toFixed(1)+'%'},
       {label:WEEK+'营业额',value:fmt(w.total),unit:'万元',note:'截至 '+md(last.date)+' · 日均 '+fmt(w.average)+' 万'},
       {label:'在院人数',value:String(lw.value==null?'—':lw.value),unit:'人',note:(lw.date?md(lw.date):md(last.date))+' 日终时点'},
       {label:WEEK+'入院',value:String(w.admissions),unit:'人',note:(function(){var m=String(WEEK).match(/（([^—]+)—/);return (m?m[1]:'9.28')+'—'+md(last.date)+' 已发生';})()},
@@ -144,7 +155,7 @@
     /* ⚠ 报告期取**结算月**末日（9月30日），不能跟数据末日走
        —— 否则会显示「9月1日—10月1日」，把 10 月并进 9 月报告。
        而「营收数据至」用数据末日（10月1日），两者语义不同，勿混用同一函数。 */
-    range.innerHTML='<i>▦</i>'+monthRangeText()+' · '+WEEK+'进行中 · '
+    range.innerHTML='<i>▦</i>'+monthRangeText()+' · '+WEEK+(window.__WEEK_DONE?'已完整':'进行中')+' · '
       +((_igMd&&_ig!==_snap.updatedThrough)?('部门数据至 '+_igMd+' · '):'')
       +'营收数据至 '+(lastDateMd()||'—');
   }

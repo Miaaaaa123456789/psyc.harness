@@ -63,6 +63,11 @@
       total: total, out: o, in: i,
       first: first, repeat: repeat, visits: first + repeat,
       admit: admit, discharges: dis,
+      /* ⚠ 2026-10-06 修：单日明细卡原先误用 admit/discharges（＝**月累计**），
+         结果「10.05 单日明细」里显示「入院/出院 11/8 人」（那是 10 月累计）→ 自相矛盾。
+         这里补上末日当天的单日值，卡片改用它们。 */
+      dayAdmit: all[all.length - 1].admit || 0,
+      dayDischarges: (all[all.length - 1].dischargeFirst || 0) + (all[all.length - 1].dischargeRepeat || 0),
       ward: all[all.length - 1].ward,
       lastDate: all[all.length - 1].date,
       target: OCT_TARGET,
@@ -148,7 +153,7 @@
           '</div>' +
         '</article>' +
 
-        /* ③ 10.1 单日明细 */
+        /* ③ 末日单日明细 */
         '<article class="ob-card">' +
           '<label>' + md(s.lastDate) + ' 单日明细</label>' +
           '<div class="ob-num">' + wan(s.all[s.all.length - 1].total) + '<em>万元</em></div>' +
@@ -156,7 +161,7 @@
             '在院 ' + wan(s.all[s.all.length - 1].inpatient) + ' 万</div>' +
           '<div class="ob-split">' +
             '<div><label>在院人数</label><b>' + (s.ward == null ? '待补' : int(s.ward)) + '<em> 人</em></b></div>' +
-            '<div><label>入院 / 出院</label><b>' + int(s.admit) + ' / ' + int(s.discharges) + '<em> 人</em></b></div>' +
+            '<div><label>入院 / 出院（当日）</label><b>' + int(s.dayAdmit) + ' / ' + int(s.dayDischarges) + '<em> 人</em></b></div>' +
           '</div>' +
         '</article>' +
 

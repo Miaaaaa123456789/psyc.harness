@@ -12,12 +12,15 @@
 (function () {
   'use strict';
 
-  var GOAL = 2600000;                       // 月度目标 260 万（元）
-  var REPORT_RANGE = '2026-09-01—2026-09-29';
+  var GOAL = 2600000;   // 月度目标 260 万（元）—— 2026-10 沿用 9 月目标（业主 2026-10-06 确认）
   var DOW = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-  var W1 = ['2026-09-01', '2026-09-06'], W2 = ['2026-09-07', '2026-09-13'],
-      W3 = ['2026-09-14', '2026-09-20'], W4 = ['2026-09-21', '2026-09-27'],
-      W5 = ['2026-09-28', '2026-10-04'];
+  /* ⭐⭐ 月口径**可参数化**（2026-10-06 改造。业主：主面板切 10 月，9 月内容折进抽屉）
+     · SETTLED_MONTH ＝ 主面板的结算月（当前 '2026-10'）
+     · SEP_MONTH     ＝ 9 月整月报告抽屉**固定**用的月份（'2026-09'），不随结算月滚动
+     derive(ym) / facts(ym) 都接受可选月份参数，缺省＝结算月。
+     ⚠ 改造前月口径是「全局唯一」的：抽屉一旦跟着切月，就会把 9 月数据渲染成 10 月标题。 */
+  var SETTLED_MONTH = '2026-10';
+  var SEP_MONTH = '2026-09';
   /* ⭐⭐ 周窗口**动态推导**：本周＝「最后一个有数据的日期」所在自然周（周一—周日）；
      上一周＝其前一周。与 data-import.js 的 refreshWindow() 同一口径。
 
@@ -25,8 +28,9 @@
      数据推进到 10.5（周一，属**新的一周**）后，本周窗口仍停在 9.28—10.4
      → 10.5 落在窗口外、周口径面板整段不更新（「本周」永远显示上一周的数）。
      这类「窗口不跟数据滚」是本项目最常见的静默失真，务必保持动态。
-     ⚠ W1—W5 仍保留为常量：它们是**9 月报告**的周序列（月口径封顶），与「本周」语义不同。 */
-  var CUR = W5, PREV = W4;   // 初值；derive() 会按数据实际末日重算
+     ⚠ 同批改造：**月内周序列**不再硬编码 W1—W5，改由 weeksOfMonth(ym) 按月份推导，
+     10 月周序列自动生成，9 月序列与原 W1—W5 完全等价（含 9.28—9.30 封顶）。 */
+  var CUR = ['2026-09-28', '2026-10-04'], PREV = ['2026-09-21', '2026-09-27'];   // 初值；derive() 按数据实际末日重算
   function ymd(x) {
     return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
   }
@@ -46,13 +50,35 @@
     CUR = [mon, addDays(mon, 6)];
     PREV = [addDays(mon, -7), addDays(mon, -1)];
   }
-  /* ⭐ 结算月（与 data-import.js 同一口径）：所有**月**维度聚合只统计 9 月。
-     10.1 属 10 月账，若并入月累计 → 227.17 万被冲成 234.17 万、「已收官」失效。
-     周维度不受影响：本周(system)仍取 W5＝9.28—10.4，含 10.1。 */
-  var SETTLED_MONTH = '2026-09';
-  var MONTH_FIRST = SETTLED_MONTH + '-01';
-  var MONTH_LAST = '2026-09-30';
-  function monthRows() { return subset(MONTH_FIRST, MONTH_LAST); }
+  /* ---- 月份工具：月口径参数化的基础设施 ----
+     ⚠ 2026-10-06 前这里是 `var SETTLED_MONTH='2026-09'` + `MONTH_FIRST/MONTH_LAST` 常量，
+     全站只有「一个月」。现在改为按 ym 推导，主面板（10 月）与抽屉（9 月）可并存。 */
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function monthFirst(ym) { return ym + '-01'; }
+  function monthDaysOf(ym) { return new Date(+ym.slice(0, 4), +ym.slice(5, 7), 0).getDate(); }
+  function monthLast(ym) { return ym + '-' + pad2(monthDaysOf(ym)); }
+  function monthRowsOf(ym) { return subset(monthFirst(ym), monthLast(ym)); }
+  function shortMd(d) { return (+d.slice(5, 7)) + '.' + (+d.slice(8)); }
+  /* 某月的**周序列**：按自然周（周一—周日）切，首尾按所在月裁剪。
+     · 9 月 → 9.1—9.6 / 9.7—9.13 / 9.14—9.20 / 9.21—9.27 / 9.28—9.30（＝原 W1—W5，末周封顶）
+     · 10 月 → 10.1—10.4 / 10.5—10.11 / 10.12—10.18 / 10.19—10.25 / 10.26—10.31 */
+  function weeksOfMonth(ym) {
+    var first = monthFirst(ym), last = monthLast(ym);
+    var mon = weekStartOf(first), out = [], guard = 0;
+    while (mon <= last && guard++ < 8) {
+      var sun = addDays(mon, 6);
+      out.push({
+        from: mon < first ? first : mon,
+        to: sun > last ? last : sun,
+        mon: mon,
+        capped: (mon < first || sun > last)      // 首/末周被月份裁剪
+      });
+      mon = addDays(mon, 7);
+    }
+    return out;
+  }
+  /* 结算月的快捷方式；⚠ 仅供「缺省口径」使用，需指定月份处一律走 monthRowsOf(ym)。 */
+  function monthRows() { return monthRowsOf(SETTLED_MONTH); }
 
   function num(v) { var x = Number(v); return Number.isFinite(x) ? x : 0; }
   function sum(list, key) { return list.reduce(function (a, r) { return a + num(r[key]); }, 0); }
@@ -90,8 +116,8 @@
   }
 
   var data = {
-    month: '2026-09',
-    reportRange: REPORT_RANGE,
+    month: SETTLED_MONTH,
+    reportRange: monthFirst(SETTLED_MONTH) + '—' + monthLast(SETTLED_MONTH),
     updatedThrough: '',
     updatedAt: '—',
     goal: GOAL,
@@ -140,10 +166,17 @@
     return { value: null, date: '' };
   }
 
-  function derive() {
+  /* ⭐ derive(ym)：ym 缺省＝结算月（主面板）。
+     9 月整月报告抽屉传 derive('2026-09')，保证抽屉里始终是 9 月口径。 */
+  function derive(ym) {
+    ym = ym || SETTLED_MONTH;
+    var mFirst = monthFirst(ym), mLast = monthLast(ym), mDays = monthDaysOf(ym);
     refreshWindow();                             // ⭐ 先按数据末日重算周窗口
-    var month = summarize(monthRows());          // ⭐ 月口径只算 9 月
+    var month = summarize(subset(mFirst, mLast));
     var current = summarize(subset(CUR[0], CUR[1]));   // ⭐ 周口径（含跨月日）
+    /* ⭐ 给本周加 label（2026-10-06）：各模块显示「本周（X—Y）」需要它，
+       原先只有 weeks[] 的元素有 label，currentWeek 没有 → 模块只能自己拼或写死。 */
+    current.label = shortMd(CUR[0]) + '—' + shortMd(CUR[1]);
     /* 上周可比区间＝与本周已发生天数相同的上周片段（同天数口径）
        ⚠ pcTo 必须用日期加法算；原先把月份硬编码成 '2026-09-'，
        PREV 一旦落在别的月份（如 9.28—10.4）就会算错。 */
@@ -151,36 +184,40 @@
     var pcTo = addDays(PREV[0], n - 1);
     if (pcTo > PREV[1]) pcTo = PREV[1];
     var previousComparable = summarize(subset(PREV[0], pcTo));
-    /* ⚠ W5 的自然周是 9.28—10.4，但**月口径**下只能取 9 月内的 9.28—9.30。
-       否则「9月各周营业对比 / 9月周度节奏」会把 10.1 的 8.60 万算进 9 月，
-       五根柱相加也凑不出 227.17 万。本周（含 10.1）另行由 currentWeek 提供。 */
-    var weeks = [[W1, '9.1—9.6'], [W2, '9.7—9.13'], [W3, '9.14—9.20'], [W4, '9.21—9.27'], [W5, '9.28—10.4']]
-      .map(function (w) {
-        var to = w[0][1] > MONTH_LAST ? MONTH_LAST : w[0][1];
-        var x = summarize(subset(w[0][0], to));
-        x.fullLabel = w[1];
-        x.capped = (to !== w[0][1]);
-        x.label = x.capped ? (w[1].split('—')[0] + '—' + (+MONTH_LAST.slice(5, 7)) + '.' + (+MONTH_LAST.slice(8))) : w[1];
-        x.current = (w[0] === CUR); x.from = w[0][0]; x.to = to;
-        return x;
-      });
+    /* ⭐ 月内周序列按 ym 推导（原先硬编码 W1—W5）。
+       首/末周被月份裁剪，保证「各周相加 ＝ 月累计」：
+       · 9 月末周 9.28—10.4 裁到 9.30，10.1 的 8.60 万不会混进 9 月；
+       · 10 月首周 9.28—10.4 裁到 10.1 起，9 月末的尾巴不会混进 10 月。
+       ⚠ 跨月自然周（如 9.28—10.4）在两个月里各自只计本月的部分，这是刻意的。 */
+    var curMon = weekStartOf(CUR[0]);          // 本周的周一（用于标 current）
+    var weeks = weeksOfMonth(ym).map(function (w) {
+      var x = summarize(subset(w.from, w.to));
+      x.label = shortMd(w.from) + '—' + shortMd(w.to);
+      x.fullLabel = x.label;
+      x.capped = w.capped;
+      x.current = (w.mon === curMon);
+      return x;
+    });
 
     /* ⚠ 原为 lastDay()（＝数据末日的「日」）—— 数据到 10.1 后会变成 1，
-       时间进度掉到 3.2%、剩余 30 天。改为结算月实际覆盖天数。 */
-    var used = monthRows().length || month.days;
-    var remainingDays = Math.max(0, 30 - used);
+       时间进度掉到 3.2%、剩余 30 天。改为当月实际覆盖天数。
+       ⚠ 天数也按 ym 取（10 月 31 天、9 月 30 天），不能再写死 30。 */
+    var used = subset(mFirst, mLast).length || month.days;
+    var remainingDays = Math.max(0, mDays - used);
     var remaining = GOAL - month.total;
-    var MR = monthRows();                       // 月口径样本（9 月）
+    var MR = subset(mFirst, mLast);             // 该月的样本
     var sorted = MR.slice().sort(function (a, b) { return b.total - a.total; });
     var weekend = MR.filter(function (r) { return r.weekday === '周六' || r.weekday === '周日'; });
     var weekday = MR.filter(function (r) { return r.weekday !== '周六' && r.weekday !== '周日'; });
     return {
+      monthKey: ym, monthFirst: mFirst, monthLast: mLast, monthDays: mDays,
       month: month, currentWeek: current, previousComparable: previousComparable, weeks: weeks,
       usedDays: used, remaining: remaining, remainingDays: remainingDays,
       requiredDaily: remainingDays ? remaining / remainingDays : 0,
       forecast: month.total + month.average * remainingDays,
       amountRate: month.total / GOAL * 100,
-      timeRate: used / 30 * 100,
+      timeRate: used / mDays * 100,
+      monthClosed: remainingDays === 0,
       topDays: sorted.slice(0, 5),
       weekend: summarize(weekend), weekday: summarize(weekday),
       lastDate: data.rows.length ? data.rows[data.rows.length - 1].date : ''
@@ -196,17 +233,21 @@
          这样与「数据更新至」时间戳同源，不会出现「时间戳跳了、天数没跳」。
        · 时间进度 = 数据最新日 ÷ 当月天数（与营收进度同源比较）。
        · 负数一律用 U+2212「−」而非 ASCII「-」。 */
-  function buildFacts() {
-    /* ⚠ 月口径一律取**结算月**（2026-09）。原用 data.rows 与 last（数据末日）：
-       10.1 进来后 last 变 10-01 → used=1、monthDays=31、时间进度 3.2%、剩余 30 天，
-       9 月「已收官」的整站文案会全部退回错误表述。 */
-    var m = summarize(monthRows());
+  /* ⭐ buildFacts(ym)：ym 缺省＝结算月（主面板 10 月）。
+     ⚠ 月口径**不能**用 data.rows 与 last（数据末日）：
+        10.1 进来后 last 变 10-01 → used=1、时间进度 3.2%、剩余 30 天，
+        9 月的「已收官」整站文案会全部退回错误表述。
+     抽屉（9 月）传 facts('2026-09')，与主面板互不干扰。 */
+  function buildFacts(ym) {
+    ym = ym || SETTLED_MONTH;
+    var mFirst = monthFirst(ym), mLast = monthLast(ym);
+    var m = summarize(subset(mFirst, mLast));
     var last = data.rows.length ? data.rows[data.rows.length - 1].date : '';
-    /* 实际末日（10.1）只用于时间戳 labelDate / labelDateShort */
+    /* 实际末日（10.5）只用于时间戳 labelDate / labelDateShort */
     var ly = +last.slice(0, 4), lmo = +last.slice(5, 7), lday = +last.slice(8);
-    var y = +MONTH_LAST.slice(0, 4), mo = +MONTH_LAST.slice(5, 7);
-    var monthDays = new Date(y, mo, 0).getDate();
-    var used = monthRows().length;
+    var y = +ym.slice(0, 4), mo = +ym.slice(5, 7);
+    var monthDays = monthDaysOf(ym);
+    var used = subset(mFirst, mLast).length;
     var remainDays = Math.max(0, monthDays - used);
     var remain = Math.max(0, GOAL - m.total);
     var needDaily = remainDays ? remain / remainDays : 0;
@@ -242,8 +283,14 @@
       sgn: sgn
     };
   }
-  var FACTS = null;
-  function facts() { if (!FACTS) FACTS = buildFacts(); return FACTS; }
+  /* ⚠ 按月份分别缓存：主面板取 facts()（10 月），抽屉取 facts('2026-09')。
+     改造前只有单个 FACTS 缓存，参数化后必须按月分开，否则两边互相污染。 */
+  var FACTS = {};
+  function facts(ym) {
+    var k = ym || SETTLED_MONTH;
+    if (!FACTS[k]) FACTS[k] = buildFacts(k);
+    return FACTS[k];
+  }
 
   function refresh() {
     data.rows = buildRows();
@@ -252,10 +299,10 @@
     data.updatedAt = last
       ? (last.date.slice(0, 4) + '年' + (+last.date.slice(5, 7)) + '月' + (+last.date.slice(8)) + '日 23:59')
       : '—';
-    /* ⚠ REPORT_RANGE 原写死；且不能跟着 last 走 —— 数据到 10.1 后
-       报告期会变成 09-01—10-01，把 10 月并进 9 月报告。固定为结算月区间。 */
-    data.reportRange = MONTH_FIRST + '—' + MONTH_LAST;
-    FACTS = null;          // 数据变了 → 口径缓存失效，下次取用时重算
+    /* ⚠ 报告期**不能**跟着 last 走 —— 数据到 10.1 后报告期会变成 09-01—10-01，
+       把 10 月并进 9 月报告。固定为结算月区间（当前 2026-10-01—2026-10-31）。 */
+    data.reportRange = monthFirst(SETTLED_MONTH) + '—' + monthLast(SETTLED_MONTH);
+    FACTS = {};            // 数据变了 → 各月口径缓存全部失效，下次取用时重算
     /* ⚠ 不要把 data.facts 覆盖成对象：data.facts 必须始终是**函数**，
        否则各模块调用 data.facts() 会抛错（此前 refresh 每次写入都会把它换成对象）。 */
     data.factsCache = facts();
@@ -267,6 +314,11 @@
   data.facts = facts;          // ⭐ 全站统一口径：data.facts() 取最新值
   data.summarize = summarize;
   data.derive = derive;
+  /* ⭐ 暴露月份常量：主面板 = SETTLED_MONTH，9 月抽屉 = SEP_MONTH */
+  data.SETTLED_MONTH = SETTLED_MONTH;
+  data.SEP_MONTH = SEP_MONTH;
+  data.monthLast = monthLast;
+  data.monthFirst = monthFirst;
   window.SEPTEMBER_REVENUE_DATA = data;
 
   /* 源版这里会写自己的 localStorage；本仓不落第二份数据，转交 OPS_REVENUE */

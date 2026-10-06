@@ -120,7 +120,12 @@
     var D = src(), out = JSON.parse(JSON.stringify(FALLBACK));
     if (!D || typeof D.facts !== 'function') return out;
     try {
-      var f = D.facts(), x = D.derive();
+      /* ⭐⭐ 抽屉固定取 **9 月** 口径（2026-10-06）。
+         主面板已切到 10 月，D.facts()/D.derive() 的缺省参数也跟着变成 10 月。
+         抽屉是「9 月整月报告」，必须显式传 '2026-09'，否则会把 10 月数据
+         渲染在 9 月标题下（最危险的静默失真）。 */
+      var SEP = D.SEP_MONTH || '2026-09';
+      var f = D.facts(SEP), x = D.derive(SEP);
       out.totalWan = f.totalWan;
       out.goalWan = String(f.goalWan);
       out.amountRate = f.amountRate;
@@ -391,8 +396,59 @@
       '<li><b>营销中心</b>：管家 367 条 / 转住院 61 人为《患者有效对接表》9 月累计（两种口径同值）；渠道路到院 44 人为源表周 9.21—9.27。</li>' +
       '<li><b>不可相加</b>：各部门指标来自不同源表与不同覆盖区间，本报告只做<b>并列呈现与方向判断</b>，不做加总，也不做患者级转化率归因。' +
       '绩效结算需在各部门补齐 9 月整月数据、并固定口径换算关系后再进行。</li>' +
-      '</ul></div>';
+      '</ul></div>' +
+      archiveHtml() +
+      '</div>';
   }
+
+  /* ⭐ 9 月主面板洞察存档（2026-10-06）
+     主面板切到 10 月后，原本排在主面板的 9 月洞察（AI 三项判断 + 变好/变差 + 待确认清单）
+     按业主要求**不删减**，整体折叠进抽屉。原文一字未改，只加了包装。 */
+  function archiveHtml() {
+    return '<details class="sr-card sr-archive">' +
+      '<summary><span><b>9 月主面板洞察存档</b>' +
+      '<small>主面板切到 10 月后整体折叠于此 · 原文保留、未删减</small></span>' +
+      '<em>展开／收起</em></summary>' +
+      '<div class="sr-note" style="margin-top:10px"><h4>原主面板「AI 今日决策建议」（截至 9 月收官）</h4></div>' +
+      '<div class="ai-balance-strip">' +
+        '<article class="ai-balance-item watch"><div class="ai-balance-head"><b>1</b><strong>9 月收官 · 目标未达成</strong></div>'
+        + '<p>9 月 30 天 227.17 万，完成 260 万的 <b>87.4%</b>，落后时间进度 <b>12.6</b> 个百分点、缺口 <b>32.83 万</b>。</p>'
+        + '<p>上周完整周日均 <b>8.51 万</b>（上上周 7.02 万，+21.2%）——节奏在改善，但月内已无追回空间。</p></article>'
+        + '<article class="ai-balance-item growth"><div class="ai-balance-head"><b>2</b><strong>患者池本周净增 1 人</strong></div>'
+        + '<p>本周入院 7 人、出院 6 人，净增 <b>1 人</b>；9.30 在院 <b>34 人</b>（较 9.29 的 31 人 +3）。</p>'
+        + '<p>住院端新增开始形成，但绝对量仍小，需继续观察能否维持。</p></article>'
+        + '<article class="ai-balance-item growth"><div class="ai-balance-head"><b>3</b><strong>关键日贡献 43.3%</strong></div>'
+        + '<p>9.25 与 9.26 两天合计 25.81 万，占上周完整周（9.21—9.27，59.59 万）的 43.3%；其前 4 天日均仅 6.21 万。</p>'
+        + '<p>动作：复盘高产项目并复制到工作日。</p></article>' +
+      '</div>' +
+      '<div class="sr-note" style="margin-top:14px"><h4>原主面板「变好的业务 · 变差的业务 · 待确认数据」（截至 9 月收官）</h4></div>' +
+      '<div class="ai-balance-strip">' +
+        '<article class="ai-balance-item growth"><div class="ai-balance-head"><b>3</b><strong>变好的业务</strong></div>'
+        + '<p>① 客服组导医台账上周补齐履职分：<span class="changed-good">32 人日、2,982 分</span>，个人排名首次可用</p>'
+        + '<p>② 导医台账「是否到院」补齐：<span class="changed-good">温X 20 条补填后全组 30/67 = 44.8%</span>（原 20 条、18 条未填，本轮已补齐）</p>'
+        + '<p>③ 团体治疗按患者团体比是回升：<span class="changed-good">上周 3 场 6 人 vs 上上周 3 场 1 人</span></p></article>'
+        + '<article class="ai-balance-item watch"><div class="ai-balance-head"><b>3</b><strong>变差的业务</strong></div>'
+        + '<p>① 心理组工作量环比双降：患者接触 <span class="changed-bad">71→34（−52.1%）</span>、咨询 <span class="changed-bad">30→26（−13.3%）</span>、家长工作 <span class="changed-bad">40→15（−62.5%）</span></p>'
+        + '<p>② 管家上周对接 <span class="changed-good">78→78 条（持平）</span>，但内部换手：物理治疗 16→21 条、住院 9→14 人上量，心理 23→19 条回落</p>'
+        + '<p>③ 物理治疗未做 <span class="changed-bad">101 次</span>（上期 85 次），9.25 单日完成率仅 <span class="changed-bad">79.7%</span></p></article>'
+        + '<article class="ai-balance-item data"><div class="ai-balance-head"><b>16</b><strong>上周要确认的具体数据</strong></div>'
+        + '<div class="check-tags"><span>1. 总费用与营收日报两个口径</span><span>2. 物理治疗五个口径</span><span>3. 医生在院未录入院日期</span><span>4. 主表已切第 3 周</span><span>5. 管家排名口径</span><span>6. 接待与到院定义</span><span>7. 营销渠道历史数据</span><span>8. 心理组按周口径</span><span>9. 护理排名口径</span><span>10. 物理治疗达标线</span><span>11. 护理表头与工娱归口</span><span>12. 客服姓名与岗位口径</span><span>13. 周度比较缺失周期</span><span>14. 导医台账待核</span><span>15. 团体治疗两表口径</span><span>16. 心理查房日报断档</span></div></article>' +
+      '</div>' +
+      '<div class="sr-note" style="margin-top:14px"><h4>原营销面板「年内月度销售走势 3—9 月」（截至 9 月收官）</h4></div>' +
+      '<div class="sr-tbl-wrap"><table class="sr-tbl"><thead><tr><th>月份</th><th>3月</th><th>4月</th><th>5月</th><th>6月</th><th>7月</th><th>8月</th><th>9月</th></tr></thead><tbody>'
+      + '<tr><td>销售额（万）</td><td>214.9</td><td>229.3</td><td>220.2</td><td>242.5</td><td><b>265.7</b></td><td>245.2</td><td><b>227.17</b></td></tr>'
+      + '<tr><td>状态</td><td>已复核</td><td>已复核</td><td>已复核</td><td>已复核</td><td>已复核</td><td>已复核</td><td>已收官</td></tr>'
+      + '</tbody></table></div>'
+      + '<div class="sr-note" style="margin-top:8px"><ul>'
+      + '<li><b>3—8 月</b>：均已按每月 4 张截图逐月复核，不再重算。</li>'
+      + '<li><b>5 月 −4.0%</b>：4 月 229.3 万降至 220.2 万；6 月和 7 月随后分别回升 10.1% 和 9.6%，连续超过 240 万目标。</li>'
+      + '<li><b>7 月达到阶段高点</b>：265.7 万，完成率 110.7%；同比 141.9% 受去年低基数影响，应重点看环比增长 9.6%。</li>'
+      + '<li><b>8 月回落 7.7%</b>：245.2 万仍超过 240 万目标 5.2 万，但比 7 月少 20.5 万；周末贡献约 44.5%，平日销售承接偏弱。</li>'
+      + '<li><b>9 月已收官 · 未达目标</b>：30 天累计 227.17 万（完成目标 260 万的 87.4%），落后 12.6 个百分点、缺口 32.83 万。</li>'
+      + '</ul></div>' +
+      '</details>';
+  }
+
 
   /* ⭐ 把报告钉在主页面最前：紧跟 .title-row，且排在 #monthCommandCenter 之前。
      ⚠ month-dashboard.js 会在 load 时把月面板插进来；本函数在每次重绘时校正位置。

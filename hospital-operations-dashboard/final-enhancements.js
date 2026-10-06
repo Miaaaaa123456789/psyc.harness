@@ -19,6 +19,11 @@
   function sgn(v){v=Number(v)||0;return (v<0?'\u2212':'')+Math.abs(v).toFixed(2);}
   function mdOf(d){return d?((+d.slice(5,7))+'月'+(+d.slice(8))+'日'):'';}
   function src(){return window.SEPTEMBER_REVENUE_DATA;}
+  /* ⭐ 结算月标签（2026-10-06 主面板切 10 月）—— 别再写死「9月」 */
+  var FE_MONTH=(window.SEPTEMBER_REVENUE_DATA&&window.SEPTEMBER_REVENUE_DATA.SETTLED_MONTH)||'2026-10';
+  var FE_NUM=+FE_MONTH.slice(5,7);
+  var FE_LAB=FE_NUM+'月';        // '10月'
+  var FE_LAB_SP=FE_NUM+' 月';    // '10 月'
 
   /* ---- 财务口径模型（全部由数据算出，无写死数字） ---- */
   function financeModel(){
@@ -27,20 +32,29 @@
     var x=s.derive(),m=x.month,goal=(s.goal||GOAL_FALLBACK*10000)/10000;
     var done=m.total/10000, rem=x.remainingDays, gap=Math.max(0,goal-done);
     var need=rem?gap/rem:0;
-    /* ⚠ 上周＝**当前周之前**最近的完整自然周。weeks 末位是进行中的本周，
-       原先写死 weeks[2] 会在周窗口滚动后取到「上上周」（实测把 7.02 当成了上周日均）。 */
+    /* ⚠⚠ 2026-10-06 修：「上周」原取「最后一个非本周的周」。
+       9 月时恰好等于上一完整周，但 10 月的 weeks 里含
+       10.26—10.31 这种**尚未发生**的周，取末项会得到未来周。
+       改为取「本周在数组中的前一项」（＝紧邻的上一周）。 */
+    var _ci=-1;
+    (x.weeks||[]).forEach(function(q,i){ if(q.current) _ci=i; });
     var lw=null, pw=null;
-    for(var wi=x.weeks.length-1;wi>=0;wi--){
-      if(x.weeks[wi].current) continue;
-      if(!lw){ lw=x.weeks[wi]; } else { pw=x.weeks[wi]; break; }
-    }
+    if(_ci>0){ lw=x.weeks[_ci-1]; pw=(_ci>1)?x.weeks[_ci-2]:null; }
+    else if(_ci<0 && x.weeks.length){ lw=x.weeks[x.weeks.length-1]; }
     if(!lw) lw=x.weeks[x.weeks.length-1];
     var lwAvg=lw.days?lw.total/10000/lw.days:0;
     var pwAvg=(pw&&pw.days)?pw.total/10000/pw.days:0;
     var cw=x.currentWeek, cwAvg=cw.days?cw.total/10000/cw.days:0;
     var fcst=done+rem*lwAvg, scn=done+rem*cwAvg;
-    var tot=0,out=0,inp=0,wk=0,mx=-1,mxd='',wkDays=0;
-    s.rows.forEach(function(r){
+    /* ⚠⚠ 2026-10-06 修：原遍历 s.rows（＝全部日期，含 9 月整月）。
+       主面板切到 10 月后，这会把 9 月的销售算进「本月门诊/住院占比」、
+       且单日峰值会取到 9.6（18.38 万）而不是 10 月内的 10.1。
+       改为只统计**结算月区间**。 */
+    var _mF=x.monthFirst||(s.SETTLED_MONTH||'2026-10')+'-01',
+        _mL=x.monthLast||(s.SETTLED_MONTH||'2026-10')+'-31';
+    var tot=0,out=0,inp=0,wk=0,mx=-1,mxd='',wkDays=0,mDays=0;
+    s.rows.filter(function(r){ return r.date>=_mF && r.date<=_mL; }).forEach(function(r){
+      mDays++;
       tot+=r.total; out+=r.outpatient; inp+=r.inpatient;
       if(r.weekday==='周六'||r.weekday==='周日'){wk+=r.total;wkDays++;}
       if(r.total>mx){mx=r.total;mxd=r.date;}
@@ -56,7 +70,12 @@
       oShare:tot?out/tot*100:0, iShare:tot?inp/tot*100:0,
       wkShare:tot?wk/tot*100:0, wkDays:wkDays,
       mxShare:tot?mx/tot*100:0, mxDate:mdOf(mxd),
-      cwDays:cw.days, days:s.rows.length, cut:mdOf(s.updatedThrough||x.lastDate),
+      cwDays:cw.days,
+      /* ⚠ 原为 s.rows.length（＝全部日期，9 月 30 天 + 10 月 5 天 = 35）。
+         主面板切到 10 月后，标题写着「营收日报数据截至 10.5 · 共 35 天」会自相矛盾。
+         改为结算月内已录天数。 */
+      mDays:mDays, mTotalDays:(x.monthDays||31),
+      days:s.rows.length, cut:mdOf(s.updatedThrough||x.lastDate),
       /* ⚠ 收官后 scn/fcst 会退化成月累计（rem=0 时 =done），不能直接当「本周/上周完整周」用 */
       cwTotalWan:cw.total/10000, lwTotalWan:(lw?lw.total/10000:0),
       /* ⚠ cutShort 的月份必须从日期取（原文硬编码 '9.'，跨月后 10.4 会显示成 9.4） */
@@ -76,11 +95,11 @@
     return ''
       + '<div class="finance-head"><div><h3>财务经营分析 · Finance View</h3>'
       + '<p>从预算差异、运行速度、收入结构与情景预测判断经营质量</p></div>'
-      + '<span class="finance-tag">营收日报数据截至 '+f.cut+' · 共 '+f.days+' 天</span></div>'
+      + '<span class="finance-tag">营收日报数据截至 '+f.cut+' · '+FE_LAB+'已录 '+f.mDays+'/'+f.mTotalDays+' 天</span></div>'
       + '<div class="finance-kpis">'
       +   '<div class="finance-kpi '+(f.gap>0?'bad':'')+'"><span>预算缺口</span><strong>−'+num(f.gap)+'万</strong><em>目标 '+num(f.goal,0)+'万</em></div>'
       +   (f.closed
-            ? '<div class="finance-kpi warn"><span>目标达成率</span><strong>'+num(f.rate,1)+'%</strong><em>9 月已收官 · 缺口 '+num(f.gap)+' 万</em></div>'
+            ? '<div class="finance-kpi warn"><span>目标达成率</span><strong>'+num(f.rate,1)+'%</strong><em>'+FE_LAB_SP+'已收官 · 缺口 '+num(f.gap)+' 万</em></div>'
             : '<div class="finance-kpi warn"><span>达标所需日均</span><strong>'+num(f.need)+'万</strong><em>剩余 '+f.rem+' 天</em></div>')
       +   '<div class="finance-kpi"><span>基准情景预测</span><strong>'+num(f.fcst)+'万</strong><em>按上周日均 '+num(f.lwAvg)+'万</em></div>'
       +   '<div class="finance-kpi '+(f.delta<0?'bad':'')+'"><span>预测目标差额</span><strong>'+sgn(f.delta)+'万</strong><em>基准情景</em></div>'
@@ -89,7 +108,7 @@
             : '<div class="finance-kpi '+(f.speed>0?'warn':'')+'"><span>所需提速</span><strong>'+(f.speed>=0?'+':'')+num(f.speed,1)+'%</strong><em>相较上周日均</em></div>')
       + '</div>'
       + '<div class="finance-body">'
-      +   '<div class="scenario"><h4>'+(f.closed?'9 月营收收官对比':'月末营收情景测算')+'</h4>'
+      +   '<div class="scenario"><h4>'+(f.closed?(FE_LAB_SP+'营收收官对比'):'月末营收情景测算')+'</h4>'
       +     '<div class="scenario-row"><span>'+(f.closed?('本周（'+f.cwDays+' 天）已发生'):'当前速度')+'</span><div class="scenario-bar"><i style="width:'+(f.closed?wCW:f.scn/f.goal*100).toFixed(1)+'%"></i></div><b>'+num(f.closed?f.cwTotalWan:f.scn)+'</b></div>'
       +     '<div class="scenario-row"><span>'+(f.closed?'上周完整周 9.21—9.27':'上周速度')+'</span><div class="scenario-bar"><i style="width:'+(f.closed?wLW:f.fcst/f.goal*100).toFixed(1)+'%"></i></div><b>'+num(f.closed?f.lwTotalWan:f.fcst)+'</b></div>'
       +     '<div class="scenario-row goal"><span>月度目标</span><div class="scenario-bar"><i style="width:100%"></i></div><b>'+num(f.goal)+'</b></div>'
@@ -99,8 +118,8 @@
       +     '<div class="quality-item"><small>住院收入占比</small><b>'+num(f.iShare,1)+'%</b></div>'
       +     '<div class="quality-item"><small>周末贡献</small><b>'+num(f.wkShare,1)+'%</b></div>'
       +     '<div class="quality-item"><small>单日最高占比</small><b>'+num(f.mxShare,1)+'%</b></div>'
-      +   '</div><div class="finance-note">以上四项均为 9 月累计口径（含周末 '+f.wkDays+' 天），'
-      +   '单日最高出现在 '+f.mxDate+'。'+(f.closed?'<b>9 月已收官</b>：累计＝实际发生额；本周＝'+(f.cwDays||0)+' 天已发生日均。':'当前速度＝本月累计＋剩余天数×'+(f.cwDays||0)+' 天日均；上周速度＝本月累计＋剩余天数×上周（'+f.lwLabel+'）日均。')
+      +   '</div><div class="finance-note">以上四项均为 '+FE_LAB+'累计口径（含周末 '+f.wkDays+' 天），'
+      +   '单日最高出现在 '+f.mxDate+'。'+(f.closed?'<b>'+FE_LAB_SP+'已收官</b>：累计＝实际发生额；本周＝'+(f.cwDays||0)+' 天已发生日均。':'当前速度＝本月累计＋剩余天数×'+(f.cwDays||0)+' 天日均；上周速度＝本月累计＋剩余天数×上周（'+f.lwLabel+'）日均。')
       +   '成本、折扣退费、应收账款尚未接入，因此暂不能严谨计算利润率、毛利率与现金流。</div></div>'
       + '</div>';
   }
@@ -120,7 +139,7 @@
     renderFinance();
   }
 
-  /* ---- 侧栏「9月营收目标进度」：原先写死 59.2% ---- */
+  /* ---- 侧栏「月度营收目标进度」：原先写死 59.2% ---- */
   function renderSideGoal(){
     var box=document.querySelector('.side-goal'); if(!box)return;
     var s=src(); if(!s||typeof s.derive!=='function'||!s.rows||!s.rows.length)return;
@@ -129,7 +148,7 @@
     var b=box.querySelector('.side-goal-track b');
     if(b)b.style.width=Math.min(100,Math.max(0,rate)).toFixed(1)+'%';
     var sm=box.querySelector('small');
-    if(sm)sm.textContent='9月营收目标进度（至 '+(mdOf(s.updatedThrough)||'—')+'）';
+    if(sm)sm.textContent=FE_LAB+'营收目标进度（至 '+(mdOf(s.updatedThrough)||'—')+'）';
   }
 
   function addSidebar(){
@@ -137,7 +156,7 @@
     const nav=sidebar.querySelector('.nav-label')||sidebar.children[2];
     const box=document.createElement('section'); box.className='side-pulse'; box.innerHTML=`
       <div class="side-pulse-head"><span>经营状态</span><i></i></div>
-      <div class="side-goal"><small>9月营收目标进度</small><strong>—</strong><div class="side-goal-track"><b></b></div></div>
+      <div class="side-goal"><small>月度营收目标进度</small><strong>—</strong><div class="side-goal-track"><b></b></div></div>
       <div class="side-signals"><div class="side-signal risk">目标风险<b>高</b></div><div class="side-signal data">待核验数据<b>17</b></div></div>
       <div class="side-shortcuts"><button data-jump="insights">重大问题</button><button data-jump="departments">部门经营</button></div>`;
     sidebar.insertBefore(box,nav);

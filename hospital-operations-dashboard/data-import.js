@@ -14,8 +14,10 @@
   var LS_META = 'ops.rev.meta.v1';    // 导入元信息
   var LS_SNAP = 'ops.rev.snapshot.v1';// 导入前快照（保留最近一次）
 
-  var MONTH_TARGET = 260;             // 9 月营收目标（万元）
-  var MONTH_DAYS = 30;                // 9 月天数（时间进度分母）
+  var MONTH_TARGET = 260;             // 月度营收目标（万元）—— 2026-10 沿用 9 月目标（业主 2026-10-06 确认）
+  /* ⚠ MONTH_DAYS 已改为按结算月推导（见下方 SETTLED_MONTH 处）：
+     原写死 30，10 月切过来后时间进度会算成 5/30=16.7%（正确应为 5/31=16.1%）、
+     「剩余 25 天」也会错成 26 天。 */
 
   /* ⭐ 写入数据后重算「数据窗口」。
      为什么必须有这一步：上面那批常量是**求值一次就固定**的。用户在页面打开期间拖入
@@ -35,11 +37,11 @@
       LW_START = _d2s(lwm); LW_END = _d2s(lws);
     }
     if (last > WEEK_END) WEEK_END = last;   // 同一周内的新数据：把区间向右延到最新数据日
-    /* ⚠ 月窗口**不再随数据前移**（结算月已锁）。
-       若这里继续前移，拖入 10.1 的数据会把 9 月整月口径冲掉。
-       等 10 月的目标值确定、业主明确切换月份时，再放开这段。 */
-    // var mp = last.slice(0, 7) + '-01';
-    // if (mp > MONTH_FROM) { MONTH_FROM = mp; MONTH_TO = _d2s(new Date(+last.slice(0, 4), +last.slice(5, 7), 0)); }
+    /* ⚠ 月窗口仍**不随数据前移** —— 但原因已变：
+       2026-10-06 起结算月显式设为 2026-10（业主决定主面板切 10 月），
+       窗口由 SETTLED_MONTH 推导，**按定义**就不该跟着数据漂。
+       若改成跟着 last 走，月末跨月时会瞬间把新月份的天数算进来。
+       ⚠ 切下个月时，改 SETTLED_MONTH 一处即可（下面 MONTH_FROM/TO/DAYS 全会跟着变）。 */
     if (last > SOURCE_CUTOFF) SOURCE_CUTOFF = last;
     return last;
   }
@@ -148,13 +150,19 @@
      跨月时（如 10.1 打开 9 月看板）若按系统当月取窗口，9 月数据会整段落在
      窗口之外 → Hero 与「9月经营总览」一起归零（本轮实测命中）。
      与「本周以数据最后一天所在周为准」同一原则。 */
-  /* ⭐⭐ 结算月（业主 2026-10-02 定：9 月口径锁死）。
-     数据滚到 10.1 后锚点月会变成 10 月；若跟着走，9 月的月累计(227.17万)、
-     「已收官」、时间进度(100%) 全部失真，月面板还会退回「剩余 30 天」。
-     故月窗口固定按**结算月**取 —— 与「本周按数据锚点周」各自独立。 */
-  var SETTLED_MONTH = '2026-09';
+  /* ⭐⭐ 结算月（业主 2026-10-06 决定：主面板切到 10 月）。
+     9 月内容不再靠「锁死月口径」保留，而是整份折进 #sepReport 抽屉
+     （抽屉走 SEPTEMBER_REVENUE_DATA.derive('2026-09') 取 9 月口径）。
+     ⚠ 月窗口仍按**结算月**取、不跟数据锚点月走 —— 与「本周按数据锚点周」各自独立；
+       否则月内某天数据缺失时窗口会漂移。 */
+  var SETTLED_MONTH = '2026-10';
   var MONTH_FROM = SETTLED_MONTH + '-01';
   var MONTH_TO = _d2s(new Date(+SETTLED_MONTH.slice(0, 4), +SETTLED_MONTH.slice(5, 7), 0));
+  /* ⭐ 结算月的天数 / 月份标签（全站时间进度、收官文案共用，别再写死 30 或 '9 月'） */
+  var MONTH_DAYS = new Date(+SETTLED_MONTH.slice(0, 4), +SETTLED_MONTH.slice(5, 7), 0).getDate();
+  var MONTH_NUM = +SETTLED_MONTH.slice(5, 7);        // 10
+  var MONTH_LABEL = MONTH_NUM + ' 月';               // '10 月'
+  var MONTH_LABEL_TIGHT = MONTH_NUM + '月';          // '10月'
   var WEEK_START = _d2s(_mon), WEEK_END = _d2s(_sun);      // 本周（周一—周日）＝数据锚点所在周
   var LW_START = _d2s(_lwm), LW_END = _d2s(_lws);          // 上周完整周
   var TODAY = _todayS;                                     // 今日（真实当天）
@@ -830,7 +838,7 @@
     if (ban) {
       ban.innerHTML = '<i>!</i><div><b>月度营收' + (s.monthClosed ? '已收官 · 未达目标' : (diff > 5 ? '已进入高风险区' : '进度跟踪')) + '</b><span>累计' + wan(s.mtd.t, 2) + '万，完成' + s.pct.toFixed(1) + '%；'
         + (s.monthClosed
-          ? ('9 月已收官，缺口' + num(s.leftAmt, 2) + '万。本期日均' + num(s.twAvg, 2) + '万。')
+          ? (MONTH_LABEL + '已收官，缺口' + num(s.leftAmt, 2) + '万。本期日均' + num(s.twAvg, 2) + '万。')
           : ('剩余' + s.leftDays + '天需' + num(s.leftAmt, 2) + '万。当前日均' + num(s.twAvg, 2) + '万，'
              + (s.gap > 0 ? '距离达标所需日均' + num(s.need, 2) + '万仍差' + num(s.gap, 2) + '万。' : '已高于达标所需日均' + num(s.need, 2) + '万。')))
         + '</span></div>';
@@ -986,10 +994,10 @@
       });
     }
 
-    /* ---- ② 9 月营收目标进度卡 ---- */
+    /* ---- ② 月度营收目标进度卡（结算月）---- */
     var tp = s.timePct, pc = s.pct, diff = tp - pc;
     var chip = $('.ov-t-head .ov-chip');
-    if (chip) chip.innerHTML = '9月1日—' + cn(cut) + ' <i>⌄</i>';
+    if (chip) chip.innerHTML = MONTH_LABEL_TIGHT + '1日—' + cn(cut) + ' <i>⌄</i>';
     var amt = $('.ov-amount');
     if (amt) amt.innerHTML = '<strong>' + wan(s.mtd.t, 2) + '</strong><em>／' + MONTH_TARGET + '万</em>';
     var bar = $('.ov-bar');
@@ -1010,7 +1018,7 @@
     if (gap) {
       if (s.monthClosed) {
         /* 月末收官：`剩余 0 天 / 日均需 0.00 万` 会误导，改为缺口口径 */
-        gap.innerHTML = '<b>9 月已收官</b>（' + s.cutD + '/' + MONTH_DAYS + ' 天）：累计 <b>' + num(s.mtd.t / 10000, 2) + ' 万</b>，'
+        gap.innerHTML = '<b>' + MONTH_LABEL + '已收官</b>（' + s.cutD + '/' + MONTH_DAYS + ' 天）：累计 <b>' + num(s.mtd.t / 10000, 2) + ' 万</b>，'
           + '完成目标 <b>' + s.pct.toFixed(1) + '%</b>，缺口 <b>' + num(s.leftAmt, 2) + ' 万</b>；'
           + '上周完整周日均 <b>' + num(s.lwAvg / 10000, 2) + ' 万</b>、'
           + '本期（' + shortRange(s.twDays) + '）日均 <b>' + num(s.twAvg, 2) + ' 万</b>。';

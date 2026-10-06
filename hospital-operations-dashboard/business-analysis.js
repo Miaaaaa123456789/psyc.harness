@@ -29,17 +29,20 @@
   }
   function txt(v, dflt) { return (v == null || v === '' || (typeof v === 'number' && !isFinite(v))) ? dflt : v; }
 
+  /* ⭐ 结算月标签（2026-10-06 主面板切 10 月）—— 别再写死「9月」 */
+  var BA_MONTH=(window.SEPTEMBER_REVENUE_DATA&&window.SEPTEMBER_REVENUE_DATA.SETTLED_MONTH)||'2026-10';
+  var BA_NUM=+BA_MONTH.slice(5,7), BA_LAB=BA_NUM+'月', BA_LAB_SP=BA_NUM+' 月', BA_DOT=BA_NUM+'.1';
   function buildHTML() {
     var f = F() || {};
-    var lastShort = txt(f.labelDateShort, '9.30');            // 9.29
+    var lastShort = txt(f.labelDateShort, '10.5');            // 10.5
     var remainDays = txt(f.remainDays, 0);
-    var totalWan = txt(f.totalWan, '227.17');
-    var amountRate = (f.amountRate != null) ? f.amountRate.toFixed(1) : '84.4';
-    var timeRate = (f.timeRate != null) ? f.timeRate.toFixed(1) : '96.7';
-    var lagPt = (f.lagPt != null) ? f.lagPt.toFixed(1) : '12.2';
-    var remainWan = txt(f.remainWan, '32.83');
-    var needDailyWan = txt(f.needDailyWan, '0.00');
-    var mtdAvgWan = txt(f.mtdAvgWan, '7.57');
+    var totalWan = txt(f.totalWan, '44.65');
+    var amountRate = (f.amountRate != null) ? f.amountRate.toFixed(1) : '17.2';
+    var timeRate = (f.timeRate != null) ? f.timeRate.toFixed(1) : '16.1';
+    var lagPt = (f.lagPt != null) ? f.lagPt.toFixed(1) : '-1.1';
+    var remainWan = txt(f.remainWan, '215.35');
+    var needDailyWan = txt(f.needDailyWan, '8.28');
+    var mtdAvgWan = txt(f.mtdAvgWan, '8.93');
     var gapDailyWan = txt(f.gapDailyWan, '0.00');
     var forecastWan = txt(f.forecastWan, '227.17');
     var forecastGapWan = txt(f.forecastGapWan, '32.83');
@@ -62,7 +65,7 @@
     var _g=(_cw&&_pc&&_pc.total)?((_cw.total/_pc.total-1)*100):null;
     var growthTxt=(_g!=null)?('上升 <b>'+_g.toFixed(1)+'%</b>'):'环比待算';
 
-    var analysisHTML=`<section class="decision-core" id="decisionCore"><header class="dc-head"><div><h2>经营问题总览</h2><p>当前不是单一部门表现不好，而是“营收速度不足、转化链条断点、服务兑现流失、数据口径混乱”同时存在。月度营收落后只是最终表现，根本问题是跨部门转化链没有闭合。</p></div><span class="dc-scope">9.28—${lastShort} · 数据截至 ${lastShort}（营收 ${lastShort}）</span></header><div class="dc-system"><div class="dc-chain"><div class="dc-node"><i>前端</i><b>触达增加</b><span>客服随访${SEC.svcCallback}条、到院${SEC.svcArrived}人，但收入未同步增长</span></div><div class="dc-node"><i>转化</i><b>有效入院不足</b><span>营销接触${SEC.mktContacts}人、入院${SEC.mktAdmit}人，转化回升但仍待观察</span></div><div class="dc-node"><i>服务</i><b>承接与兑现流失</b><span>心理业务回落，护理存在${SEC.nurseMiss}人次应做未做</span></div><div class="dc-node"><i>结果</i><b>营收速度不足</b><span>营收日报日均${mtdAvgWan}万（${lastShort} 止），${monthClosed?`全月收官 · 缺口 ${remainWan} 万`:`达标需${needDailyWan}万`}</span></div></div></div><div class="dc-risks"><article class="dc-risk red"><label>月目标风险</label><strong>落后${lagPt}pt</strong><p>累计${totalWan}万（9.1—${lastShort}），${monthClosed?`<b>9 月已收官</b>，缺口 <b>${remainWan} 万</b>，月度目标未达成`:`剩余${remainDays}天还需${remainWan}万，日均缺口${gapDailyWan}万`}。</p></article><article class="dc-risk orange"><label>前端未变现</label><strong>到院率${SEC.svcRate}%</strong><p>随访 +13.0%、到院 +5.9%，营业额 +13.3% 同步增长；但到院率由 ${SEC.svcRatePrev}% 降到 ${SEC.svcRate}%，付费转化效率待提高。</p></article><article class="dc-risk blue"><label>营销转化</label><strong>${SEC.mktDealsPrev}条 → ${SEC.mktDeals}条</strong><p>管家转住院 ${SEC.mktHospPrev}→${SEC.mktHosp} 人、率值 ${SEC.mktConvertPrev}%→${SEC.mktConvertRate}%，对接量上量而转化率持平，仍需患者级去重与收费归因后才能定论。</p></article><article class="dc-risk purple"><label>数据可用性</label><strong>5组口径冲突</strong><p>趋势可用，但暂不能支持精确绩效排名或奖金结算。</p></article></div><div class="dc-detail-grid">
+    var analysisHTML=`<section class="decision-core" id="decisionCore"><header class="dc-head"><div><h2>经营问题总览</h2><p>当前不是单一部门表现不好，而是“营收速度不足、转化链条断点、服务兑现流失、数据口径混乱”同时存在。月度营收落后只是最终表现，根本问题是跨部门转化链没有闭合。</p></div><span class="dc-scope">9.28—${lastShort} · 数据截至 ${lastShort}（营收 ${lastShort}）</span></header><div class="dc-system"><div class="dc-chain"><div class="dc-node"><i>前端</i><b>触达增加</b><span>客服随访${SEC.svcCallback}条、到院${SEC.svcArrived}人，但收入未同步增长</span></div><div class="dc-node"><i>转化</i><b>有效入院不足</b><span>营销接触${SEC.mktContacts}人、入院${SEC.mktAdmit}人，转化回升但仍待观察</span></div><div class="dc-node"><i>服务</i><b>承接与兑现流失</b><span>心理业务回落，护理存在${SEC.nurseMiss}人次应做未做</span></div><div class="dc-node"><i>结果</i><b>营收速度不足</b><span>营收日报日均${mtdAvgWan}万（${lastShort} 止），${monthClosed?`全月收官 · 缺口 ${remainWan} 万`:`达标需${needDailyWan}万`}</span></div></div></div><div class="dc-risks"><article class="dc-risk red"><label>月目标风险</label><strong>落后${lagPt}pt</strong><p>累计${totalWan}万（${BA_DOT}—${lastShort}），${monthClosed?`<b>${BA_LAB_SP}已收官</b>，缺口 <b>${remainWan} 万</b>，月度目标未达成`:`剩余${remainDays}天还需${remainWan}万，日均缺口${gapDailyWan}万`}。</p></article><article class="dc-risk orange"><label>前端未变现</label><strong>到院率${SEC.svcRate}%</strong><p>随访 +13.0%、到院 +5.9%，营业额 +13.3% 同步增长；但到院率由 ${SEC.svcRatePrev}% 降到 ${SEC.svcRate}%，付费转化效率待提高。</p></article><article class="dc-risk blue"><label>营销转化</label><strong>${SEC.mktDealsPrev}条 → ${SEC.mktDeals}条</strong><p>管家转住院 ${SEC.mktHospPrev}→${SEC.mktHosp} 人、率值 ${SEC.mktConvertPrev}%→${SEC.mktConvertRate}%，对接量上量而转化率持平，仍需患者级去重与收费归因后才能定论。</p></article><article class="dc-risk purple"><label>数据可用性</label><strong>5组口径冲突</strong><p>趋势可用，但暂不能支持精确绩效排名或奖金结算。</p></article></div><div class="dc-detail-grid">
   <details class="dc-item" open><summary><span class="dc-no">1</span>月度营收目标进入高风险区</summary><p>完成率<b>${amountRate}%</b>低于时间进度${timeRate}%。本期日均<b>${weekAvgWan} 万</b>，较上周同期（${pcLabel}，同为 ${pcDays} 天）的 <b>${pcAvgWan} 万</b>${growthTxt}；但即使维持当前节奏，月末约 ${forecastWan} 万、仍差约 ${forecastGapWan} 万，必须明确新增收入来源。</p></details>
   <details class="dc-item" open><summary><span class="dc-no">2</span>触达与收入同向增长，但到院率在下降</summary><p>客服随访${SEC.svcCallback}条、到院${SEC.svcArrived}人；上周同期46条、到院17人。随访 <b>+13.0%</b>、到院 <b>+5.9%</b>、营业额 <b>+13.3%</b> 同向增长，未出现「触达涨、收入跌」；<b>但到院率从 ${SEC.svcRatePrev}% 降到 ${SEC.svcRate}%</b>。后续仍须追踪<b>挂号—检查—治疗—入院—实际收入</b>，不能只考核随访量和到院量。</p></details>
   <details class="dc-item"><summary><span class="dc-no">3</span>营销转化率上升不能解释为效率改善</summary><p>本周对接${SEC.mktContacts}条、入院${SEC.mktAdmit}人，转化率${SEC.mktRate}%；上周同期24条、入院4人，${SEC.mktRatePrev}%。入院与对接同步上升，但样本仍小，且心理转介减少，存在服务结构失衡风险。</p></details>
@@ -78,13 +81,13 @@
   function decorateShell() {
     var f = F() || {};
     var shell=document.querySelector('.mkt-v2');if(!shell)return;
-    var lastShort = txt(f.labelDateShort, '9.30');
-    var remainDays = txt(f.remainDays, 0);
-    var totalWan = txt(f.totalWan, '227.17');
-    var amountRate = (f.amountRate!=null)?f.amountRate.toFixed(1):'74.5';
-    var remainWan = txt(f.remainWan, '32.83');
-    var needDailyWan = txt(f.needDailyWan, '0.00');
-    var mtdAvgWan = txt(f.mtdAvgWan, '7.57');
+    var lastShort = txt(f.labelDateShort, '10.5');
+    var remainDays = txt(f.remainDays, 26);
+    var totalWan = txt(f.totalWan, '44.65');
+    var amountRate = (f.amountRate!=null)?f.amountRate.toFixed(1):'17.2';
+    var remainWan = txt(f.remainWan, '215.35');
+    var needDailyWan = txt(f.needDailyWan, '8.28');
+    var mtdAvgWan = txt(f.mtdAvgWan, '8.93');
     var gapDailyWan = txt(f.gapDailyWan, '0.00');
     var weekVal = shell.querySelector('.mkt-amount');
     if(weekVal){
@@ -98,7 +101,7 @@
       var wkTotalWan = (f.weekAvgWan!=null && f.weekDays) ? (parseFloat(f.weekAvgWan)*f.weekDays).toFixed(2) : '24.56';
       weekVal.innerHTML='¥'+wkTotalWan+'<i>万</i>';
       var sub = shell.querySelector('.mkt-sub');
-      if(sub) sub.textContent='9月28—'+lastShort+' · 日均 ¥'+txt(f.weekAvgWan,'8.19')+'万'
+      if(sub) sub.textContent=(function(){try{var _d=window.SEPTEMBER_REVENUE_DATA;if(_d&&_d.derive){var _s=((_d.derive().currentWeek||{}).from)||'';if(_s)return (+_s.slice(5,7))+'.'+(+_s.slice(8))+'—';}}catch(e){}return BA_DOT+'—';})()+lastShort+' · 日均 ¥'+txt(f.weekAvgWan,'7.08')+'万'
         +(_growth!=null?(' · 较上周同期 '+(_growth>=0?'+':'')+_growth.toFixed(1)+'%（同为 '+((_cw&&_cw.days)||'—')+' 天）'):'');
     }
     var k=shell.querySelector('.mkt-kpis');if(k)k.innerHTML=`<article class="mkt-kpi"><div class="mkt-kpi-head"><i class="mkt-ico">☎</i>客服随访</div><strong>${SEC.svcCallback}条</strong><span>较上周同期 +13.0%（9.14—9.17）</span></article><article class="mkt-kpi green"><div class="mkt-kpi-head"><i class="mkt-ico">◎</i>标记到院</div><strong>${SEC.svcArrived}人</strong><span>到院率 ${SEC.svcRate}%</span></article><article class="mkt-kpi"><div class="mkt-kpi-head"><i class="mkt-ico">♧</i>营销接触</div><strong>${SEC.mktContacts}人</strong><span>较上周同期 +16.7%</span></article><article class="mkt-kpi green"><div class="mkt-kpi-head"><i class="mkt-ico">↗</i>营销入院</div><strong>${SEC.mktAdmit}人</strong><span>较上周同期 +100%</span></article><article class="mkt-kpi purple"><div class="mkt-kpi-head"><i class="mkt-ico">％</i>营销转化</div><strong>${SEC.mktConvertRate}%</strong><span>小样本，不判定改善</span></article><article class="mkt-kpi"><div class="mkt-kpi-head"><i class="mkt-ico">▥</i>在院参考</div><strong>${SEC.inHouse}人</strong><span>${lastShort} 日终时点</span></article>`;

@@ -163,7 +163,7 @@
           var lab = k.label;
           return {
             label: lab, v: +(k.total / 1e4).toFixed(2), days: k.days,
-            avg: (k.average / 1e4).toFixed(2), cur: !!k.current,
+            avg: (k.average / 1e4).toFixed(2), cur: !!(k.current || k.inPeriod),
             fullLabel: k.label
           };
         });
@@ -414,8 +414,8 @@
         '<article class="ai-balance-item watch"><div class="ai-balance-head"><b>1</b><strong>9 月收官 · 目标未达成</strong></div>'
         + '<p>9 月 30 天 227.17 万，完成 260 万的 <b>87.4%</b>，落后时间进度 <b>12.6</b> 个百分点、缺口 <b>32.83 万</b>。</p>'
         + '<p>上周完整周日均 <b>8.51 万</b>（上上周 7.02 万，+21.2%）——节奏在改善，但月内已无追回空间。</p></article>'
-        + '<article class="ai-balance-item growth"><div class="ai-balance-head"><b>2</b><strong>患者池本周净增 1 人</strong></div>'
-        + '<p>本周入院 7 人、出院 6 人，净增 <b>1 人</b>；9.30 在院 <b>34 人</b>（较 9.29 的 31 人 +3）。</p>'
+        + '<article class="ai-balance-item growth"><div class="ai-balance-head"><b>2</b><strong>患者池 9 月末周净增 1 人</strong></div>'
+        + '<p>9 月末周（9.28—9.30）入院 7 人、出院 6 人，净增 <b>1 人</b>；9.30 在院 <b>34 人</b>（较 9.29 的 31 人 +3）。</p>'
         + '<p>住院端新增开始形成，但绝对量仍小，需继续观察能否维持。</p></article>'
         + '<article class="ai-balance-item growth"><div class="ai-balance-head"><b>3</b><strong>关键日贡献 43.3%</strong></div>'
         + '<p>9.25 与 9.26 两天合计 25.81 万，占上周完整周（9.21—9.27，59.59 万）的 43.3%；其前 4 天日均仅 6.21 万。</p>'

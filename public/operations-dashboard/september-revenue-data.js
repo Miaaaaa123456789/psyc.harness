@@ -21,16 +21,18 @@
      ⚠ 改造前月口径是「全局唯一」的：抽屉一旦跟着切月，就会把 9 月数据渲染成 10 月标题。 */
   var SETTLED_MONTH = '2026-10';
   var SEP_MONTH = '2026-09';
-  /* ⭐⭐ 周窗口**动态推导**：本周＝「最后一个有数据的日期」所在自然周（周一—周日）；
-     上一周＝其前一周。与 data-import.js 的 refreshWindow() 同一口径。
-
-     ⚠⚠ 2026-10-06 修：原先 CUR/PREV **硬编码**为 W5/W4（9.28—10.4）。
-     数据推进到 10.5（周一，属**新的一周**）后，本周窗口仍停在 9.28—10.4
-     → 10.5 落在窗口外、周口径面板整段不更新（「本周」永远显示上一周的数）。
-     这类「窗口不跟数据滚」是本项目最常见的静默失真，务必保持动态。
-     ⚠ 同批改造：**月内周序列**不再硬编码 W1—W5，改由 weeksOfMonth(ym) 按月份推导，
-     10 月周序列自动生成，9 月序列与原 W1—W5 完全等价（含 9.28—9.30 封顶）。 */
-  var CUR = ['2026-09-28', '2026-10-04'], PREV = ['2026-09-21', '2026-09-27'];   // 初值；derive() 按数据实际末日重算
+  /* ⭐⭐ 本期（观察期）＝**两周窗口**，不是单周（业主 2026-10-06 定）。
+     由来：10.5 是周一，单周口径下「本期」＝10.5—10.11、实际只有 1 天数据（7.08 万），
+     口径太窄且与 9 月末的连续走势断开。
+     业主指定：**所有「本期」时间戳与分析洞察一律按 9.28—10.11 算**。
+     实现：本期起点 ＝ 数据末日所在自然周的周一，再往前推 (PERIOD_WEEKS-1) 周；
+           本期终点 ＝ 该周周日。
+     · 数据末日 10.5（周一）→ 本期 9.28—10.11、上一期 9.14—9.27（各 14 天）
+     · 「同期对照」仍取**与本期已发生天数相同**的上一期前缀段（同天数口径）
+     与 data-import.js 的 refreshWindow() 必须保持同一口径，两处一起改。
+     ⚠ 月内周序列仍由 weeksOfMonth(ym) 按月份推导（10 月 → 10.1—10.4 / 10.5—10.11 / …）。 */
+  var PERIOD_WEEKS = 2;   // 本期跨度（自然周数）
+  var CUR = ['2026-09-28', '2026-10-11'], PREV = ['2026-09-14', '2026-09-27'];   // 初值；derive() 按数据实际末日重算
   function ymd(x) {
     return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
   }
@@ -43,12 +45,18 @@
     var dow = x.getDay();                      // 0=周日
     return addDays(d, -(dow === 0 ? 6 : dow - 1));
   }
+  /* 按数据末日重算本期窗口。
+     ⚠⚠ 2026-10-06 修：原先 CUR/PREV **硬编码**为 W5/W4（9.28—10.4）。
+     数据推进到 10.5（周一，属**新的一周**）后窗口不动，周口径面板整段不更新
+     （「本周」永远显示上一周的数）——「窗口不跟数据滚」是本项目最常见的静默失真。
+     现改为：本期＝数据末日所在周 + 其前 (PERIOD_WEEKS-1) 周（共 14 天）。 */
   function refreshWindow() {
     var rs = data.rows;
     if (!rs || !rs.length) return;
     var mon = weekStartOf(rs[rs.length - 1].date);
-    CUR = [mon, addDays(mon, 6)];
-    PREV = [addDays(mon, -7), addDays(mon, -1)];
+    var from = addDays(mon, -7 * (PERIOD_WEEKS - 1));
+    CUR = [from, addDays(mon, 6)];
+    PREV = [addDays(from, -7 * PERIOD_WEEKS), addDays(from, -1)];
   }
   /* ---- 月份工具：月口径参数化的基础设施 ----
      ⚠ 2026-10-06 前这里是 `var SETTLED_MONTH='2026-09'` + `MONTH_FIRST/MONTH_LAST` 常量，
@@ -89,12 +97,17 @@
     var src = window.OPS_REVENUE;
     if (!src || !src.daily) return [];
     var daily = src.daily() || {};
-    var cum = 0, out = [];
+    var cum = 0, curM = '', out = [];
     Object.keys(daily).filter(function (k) { return /^\d{4}-\d{2}-\d{2}$/.test(k); }).sort()
       .forEach(function (k) {
         var v = daily[k] || [];
         if (v[0] == null && v[1] == null) return;
         var o = num(v[0]), i = num(v[1]), total = o + i;
+        /* ⚠ 「当月累计」必须**按月归零**：原先 cum 从 9.1 一路累加，
+           10 月表格里 10.5 那行会显示 271.82 万（＝9 月 227.17 + 10 月 44.65），
+           与表尾「当月累计 44.65 万」自相矛盾。 */
+        var mk = k.slice(0, 7);
+        if (mk !== curM) { curM = mk; cum = 0; }
         cum += total;
         out.push({
           date: k,
@@ -173,29 +186,35 @@
     var mFirst = monthFirst(ym), mLast = monthLast(ym), mDays = monthDaysOf(ym);
     refreshWindow();                             // ⭐ 先按数据末日重算周窗口
     var month = summarize(subset(mFirst, mLast));
-    var current = summarize(subset(CUR[0], CUR[1]));   // ⭐ 周口径（含跨月日）
-    /* ⭐ 给本周加 label（2026-10-06）：各模块显示「本周（X—Y）」需要它，
+    var current = summarize(subset(CUR[0], CUR[1]));   // ⭐ 本期（两周窗口，含跨月日）
+    /* ⭐ 给本期加 label（2026-10-06）：各模块显示「本期（X—Y）」需要它，
        原先只有 weeks[] 的元素有 label，currentWeek 没有 → 模块只能自己拼或写死。 */
     current.label = shortMd(CUR[0]) + '—' + shortMd(CUR[1]);
-    /* 上周可比区间＝与本周已发生天数相同的上周片段（同天数口径）
+    current.from = CUR[0]; current.to = CUR[1];
+    /* 上一期可比区间＝与本期已发生天数相同的上一期前缀段（同天数口径）
        ⚠ pcTo 必须用日期加法算；原先把月份硬编码成 '2026-09-'，
        PREV 一旦落在别的月份（如 9.28—10.4）就会算错。 */
     var n = Math.max(1, current.days);
     var pcTo = addDays(PREV[0], n - 1);
     if (pcTo > PREV[1]) pcTo = PREV[1];
     var previousComparable = summarize(subset(PREV[0], pcTo));
-    /* ⭐ 月内周序列按 ym 推导（原先硬编码 W1—W5）。
-       首/末周被月份裁剪，保证「各周相加 ＝ 月累计」：
-       · 9 月末周 9.28—10.4 裁到 9.30，10.1 的 8.60 万不会混进 9 月；
-       · 10 月首周 9.28—10.4 裁到 10.1 起，9 月末的尾巴不会混进 10 月。
-       ⚠ 跨月自然周（如 9.28—10.4）在两个月里各自只计本月的部分，这是刻意的。 */
-    var curMon = weekStartOf(CUR[0]);          // 本周的周一（用于标 current）
+    /* ⭐ 上一期区间与「同期对照」区间都带上，供各模块直接取用（别再自己拼日期） */
+    previousComparable.from = PREV[0]; previousComparable.to = pcTo;
+    previousComparable.label = shortMd(PREV[0]) + '—' + shortMd(pcTo);
+    /* ⚠ 本期是两周窗口：CUR[0]（9.28）已不是「本周一」，
+       标 current 必须用**最新数据所在周**的周一（10.5），否则会标错柱。 */
+    var lastRow = data.rows[data.rows.length - 1];
+    var curMon = lastRow ? weekStartOf(lastRow.date) : weekStartOf(CUR[0]);
+    /* ⭐ 月内周序列按 ym 推导（原先硬编码 W1—W5）。首/末周被月份裁剪，
+       保证「各周相加 ＝ 月累计」：9 月末周裁到 9.30、10 月首周裁到 10.1 起。
+       ⚠ 跨月自然周在两个月里各自只计本月的部分，这是刻意的。 */
     var weeks = weeksOfMonth(ym).map(function (w) {
       var x = summarize(subset(w.from, w.to));
       x.label = shortMd(w.from) + '—' + shortMd(w.to);
       x.fullLabel = x.label;
       x.capped = w.capped;
       x.current = (w.mon === curMon);
+      x.inPeriod = (w.to >= CUR[0] && w.from <= CUR[1]);   // 该周是否落在本期内
       return x;
     });
 
@@ -212,6 +231,10 @@
     return {
       monthKey: ym, monthFirst: mFirst, monthLast: mLast, monthDays: mDays,
       month: month, currentWeek: current, previousComparable: previousComparable, weeks: weeks,
+      /* 本期 / 上一期的原始区间（供需要自行切片的模块使用，别再自己拼日期） */
+      period: { from: CUR[0], to: CUR[1], label: shortMd(CUR[0]) + '—' + shortMd(CUR[1]) },
+      prevPeriod: { from: PREV[0], to: PREV[1], label: shortMd(PREV[0]) + '—' + shortMd(PREV[1]) },
+      periodWeeks: PERIOD_WEEKS,
       usedDays: used, remaining: remaining, remainingDays: remainingDays,
       requiredDaily: remainingDays ? remaining / remainingDays : 0,
       forecast: month.total + month.average * remainingDays,
@@ -255,7 +278,8 @@
     var amountRate = m.total / GOAL * 100;
     var sgn = function (v, d) { d = d == null ? 1 : d; return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(d); };
     var wan = function (yuan, d) { return (yuan / 10000).toFixed(d == null ? 2 : d); };
-    /* 本周已发生的日均（用有值的实际天数，不用自然天数，避免"待补"拉低均值） */
+    /* 本期已发生的日均（用有值的实际天数，不用自然天数，避免"待补"拉低均值） */
+    refreshWindow();                             // 与 derive() 同口径（facts 可能先被调用）
     var cw = summarize(subset(CUR[0], CUR[1]));
     var cwAvg = cw.days ? cw.total / cw.days : 0;
     return {
@@ -266,7 +290,7 @@
       remainWan: wan(remain),                      // '82.00'
       needDailyWan: wan(needDaily),                // '16.40'
       mtdAvgWan: wan(m.average),                   // 当月日均
-      weekAvgWan: wan(cwAvg),                      // 本周实际日均
+      weekAvgWan: wan(cwAvg),                      // 本期（两周窗口）实际日均
       /* ⭐ 月末收官：数据已覆盖整月（剩余 0 天）时，「剩余 X 天 / 日均需」不再成立，
          各模块据此换文案（否则会显示「日均需 0.00 万」这种误导性说法）。 */
       monthClosed: remainDays === 0,
@@ -276,6 +300,9 @@
       forecastWan: wan(m.total + m.average * remainDays),
       forecastGapWan: wan(Math.max(0, GOAL - (m.total + m.average * remainDays))),
       days: m.days, weekDays: cw.days,
+      /* 本期 / 上一期区间标签（「本期」＝两周窗口，别再写死成单周） */
+      periodLabel: shortMd(CUR[0]) + '—' + shortMd(CUR[1]),
+      prevPeriodLabel: shortMd(PREV[0]) + '—' + shortMd(PREV[1]),
       /* 统一格式化的字符串，模块直接用，避免各处再拼 */
       labelDate: last ? (ly + '年' + lmo + '月' + lday + '日') : '—',
       labelDateShort: last ? (lmo + '.' + lday) : '—',       // 实际末日 10.1（营收数据至）

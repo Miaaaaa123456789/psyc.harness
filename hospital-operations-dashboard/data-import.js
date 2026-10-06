@@ -15,6 +15,11 @@
   var LS_SNAP = 'ops.rev.snapshot.v1';// 导入前快照（保留最近一次）
 
   var MONTH_TARGET = 260;             // 月度营收目标（万元）—— 2026-10 沿用 9 月目标（业主 2026-10-06 确认）
+  /* ⭐⭐ 本期（观察期）＝**两周窗口**（业主 2026-10-06 定）。
+     单周口径下「本期」＝10.5—10.11、实际只 1 天数据；业主指定所有「本期」时间戳与洞察
+     一律按 **9.28—10.11** 算。改这里即改全站的本期区间（与 september-revenue-data.js
+     的 PERIOD_WEEKS 必须一致，两处一起改）。 */
+  var PERIOD_WEEKS = 2;
   /* ⚠ MONTH_DAYS 已改为按结算月推导（见下方 SETTLED_MONTH 处）：
      原写死 30，10 月切过来后时间进度会算成 5/30=16.7%（正确应为 5/31=16.1%）、
      「剩余 25 天」也会错成 26 天。 */
@@ -29,14 +34,17 @@
     var last = _probeLastDay(TODAY);
     var a = new Date(+last.slice(0, 4), +last.slice(5, 7) - 1, +last.slice(8));
     var mon = _monOf(a), sun = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6);
-    var lwm = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() - 7);
-    var lws = new Date(lwm.getFullYear(), lwm.getMonth(), lwm.getDate() + 6);
-    var ws = _d2s(mon), we = _d2s(sun);
-    if (ws > WEEK_START) {              // 只在数据推进到更晚的周时前移
+    /* ⭐ 本期＝两周窗口：起点＝数据末日所在周的周一往前推 (PERIOD_WEEKS-1) 周；
+       上一期＝紧邻其前的等长完整期。10.5（周一）→ 本期 9.28—10.11、上一期 9.14—9.27。 */
+    var pStart = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() - 7 * (PERIOD_WEEKS - 1));
+    var lwm = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() - 7 * PERIOD_WEEKS - 7);
+    var lws = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() - 8);
+    var ws = _d2s(pStart), we = _d2s(sun);
+    if (ws > WEEK_START) {              // 只在数据推进到更晚的期时前移
       WEEK_START = ws; WEEK_END = we;
       LW_START = _d2s(lwm); LW_END = _d2s(lws);
     }
-    if (last > WEEK_END) WEEK_END = last;   // 同一周内的新数据：把区间向右延到最新数据日
+    if (last > WEEK_END) WEEK_END = last;   // 本期内的新数据：把区间向右延到最新数据日
     /* ⚠ 月窗口仍**不随数据前移** —— 但原因已变：
        2026-10-06 起结算月显式设为 2026-10（业主决定主面板切 10 月），
        窗口由 SETTLED_MONTH 推导，**按定义**就不该跟着数据漂。
@@ -144,8 +152,9 @@
   var _anchor = new Date(+_anchorS.slice(0, 4), +_anchorS.slice(5, 7) - 1, +_anchorS.slice(8));
   var _mon = _monOf(_anchor);                     // 锚点所在周的周一
   var _sun = new Date(_mon.getFullYear(), _mon.getMonth(), _mon.getDate() + 6);
-  var _lwm = new Date(_mon.getFullYear(), _mon.getMonth(), _mon.getDate() - 7);
-  var _lws = new Date(_lwm.getFullYear(), _lwm.getMonth(), _lwm.getDate() + 6);
+  var _lwm = new Date(_mon.getFullYear(), _mon.getMonth(), _mon.getDate() - 7 * PERIOD_WEEKS - 7);
+  var _lws = new Date(_mon.getFullYear(), _mon.getMonth(), _mon.getDate() - 8);
+  var _pStart = new Date(_mon.getFullYear(), _mon.getMonth(), _mon.getDate() - 7 * (PERIOD_WEEKS - 1));   // 本期起点（两周窗口）
   /* ⚠ 「当月」以**数据锚点月**为准，不以系统当天为准。
      跨月时（如 10.1 打开 9 月看板）若按系统当月取窗口，9 月数据会整段落在
      窗口之外 → Hero 与「9月经营总览」一起归零（本轮实测命中）。
@@ -163,8 +172,8 @@
   var MONTH_NUM = +SETTLED_MONTH.slice(5, 7);        // 10
   var MONTH_LABEL = MONTH_NUM + ' 月';               // '10 月'
   var MONTH_LABEL_TIGHT = MONTH_NUM + '月';          // '10月'
-  var WEEK_START = _d2s(_mon), WEEK_END = _d2s(_sun);      // 本周（周一—周日）＝数据锚点所在周
-  var LW_START = _d2s(_lwm), LW_END = _d2s(_lws);          // 上周完整周
+  var WEEK_START = _d2s(_pStart), WEEK_END = _d2s(_sun);   // 本期（两周窗口）＝数据锚点所在周 及其前一周
+  var LW_START = _d2s(_lwm), LW_END = _d2s(_lws);          // 上一期（紧邻的完整两周期）
   var TODAY = _todayS;                                     // 今日（真实当天）
   var SOURCE_CUTOFF = TODAY;   // 其他数据源（客服/心理/管家/团体）的共同截止日
   /* 字段下标（供渲染与校验共用） */
@@ -290,8 +299,8 @@
     var tw = agg(daily, twDays);
     var lwDays = keysIn(daily, LW_START, LW_END);
     var lw = agg(daily, lwDays);
-    // 上周同期 = 本周已有日期各前移 7 天
-    var sameDays = twDays.map(function (d) { return shiftDay(d, -7); }).filter(function (d) { return daily[d]; });
+    // 上一期同期 = 本期已有日期各前移 7×PERIOD_WEEKS 天（本期是两周窗口，故前移 14 天）
+    var sameDays = twDays.map(function (d) { return shiftDay(d, -7 * PERIOD_WEEKS); }).filter(function (d) { return daily[d]; });
     var same = agg(daily, sameDays);
     // 月度（截至最新数据日）
     var mDays = keysIn(daily, MONTH_FROM, MONTH_TO);
@@ -686,22 +695,22 @@
     $$('.ov-live').forEach(function (e) { e.textContent = '每日 09:00 抓取 · 数据更新至 ' + (+s.globalCut.slice(5, 7)) + '.' + (+s.globalCut.slice(8)); });
     setText('.mkt-filter small', ''); // 由下方重建（含 ● 图标）
     $$('.mkt-filter small').forEach(function (e) {
-      e.innerHTML = '<b>●</b> 数据更新至 ' + fmtDot(TODAY) + '　·　本周 ' + fmtCN(WEEK_START) + '—' + fmtCN(WEEK_END) + '（进行中，各源数据至 ' + cutTxt + '，营收至 ' + revTxt + '）';
+      e.innerHTML = '<b>●</b> 数据更新至 ' + fmtDot(TODAY) + '　·　本期 ' + fmtCN(WEEK_START) + '—' + fmtCN(WEEK_END) + '（进行中，各源数据至 ' + cutTxt + '，营收至 ' + revTxt + '）';
     });
-    setText('.dc-scope', '本周 ' + shortRange(enumerate(WEEK_START, WEEK_END)) + ' · 数据截至 ' + (s.globalCut ? (+s.globalCut.slice(5, 7)) + '.' + (+s.globalCut.slice(8)) : '—') + '（营收 ' + (s.revCut ? (+s.revCut.slice(5, 7)) + '.' + (+s.revCut.slice(8)) : '—') + '）');
+    setText('.dc-scope', '本期 ' + shortRange(enumerate(WEEK_START, WEEK_END)) + ' · 数据截至 ' + (s.globalCut ? (+s.globalCut.slice(5, 7)) + '.' + (+s.globalCut.slice(8)) : '—') + '（营收 ' + (s.revCut ? (+s.revCut.slice(5, 7)) + '.' + (+s.revCut.slice(8)) : '—') + '）');
     setText('#sheetSub', '数据更新至 ' + TODAY.split('-')[0] + '年' + (+TODAY.slice(5, 7)) + '月' + (+TODAY.slice(8)) + '日 · 独立部门经营模块');
 
     /* ---- Hero ---- */
     if (s.tw.n) {
       var sub = shortRange(s.twDays) + ' · 日均 ¥' + num(s.twAvg, 2) + '万';
-      if (s.delta != null) sub += ' · 较上周同期 ' + sign(s.delta, 1) + '%';
+      if (s.delta != null) sub += ' · 较上一期同期 ' + sign(s.delta, 1) + '%';
       if (s.missing.length) sub += '（' + shortRange(s.missing) + ' 日报待补）';
       $$('.mkt-amount').forEach(function (e) { e.innerHTML = '¥' + wan(s.tw.t, 2) + '<i>万</i>'; });
       setText('.mkt-sub', sub);
       setText('.mkt-hero-kicker', '本期营业额');
     } else {
       $$('.mkt-amount').forEach(function (e) { e.innerHTML = '—'; });
-      setText('.mkt-sub', '本周暂无营收数据');
+      setText('.mkt-sub', '本期暂无营收数据');
     }
 
     /* ---- 目标进度卡 ---- */
@@ -740,8 +749,8 @@
     if (bars.length >= 3) {
       var base = s.need || 1;
       var seq = [
-        [num(s.twAvg, 2) + '万', s.twAvg / base * 100, '本周实际日均'],
-        [num(s.sameAvg, 2) + '万', s.sameAvg / base * 100, '上周同期日均'],
+        [num(s.twAvg, 2) + '万', s.twAvg / base * 100, '本期实际日均'],
+        [num(s.sameAvg, 2) + '万', s.sameAvg / base * 100, '上一期同期日均'],
         [num(s.need, 2) + '万', 100, '达标所需日均']
       ];
       bars.forEach(function (bar, i) {
@@ -760,14 +769,14 @@
     if (s.tw.t) {
       var oPct = s.tw.o / s.tw.t * 100, iPct = s.tw.i / s.tw.t * 100;
       $$('.mkt-ring div').forEach(function (e) {
-        e.innerHTML = '<b>' + wan(s.tw.t, 2) + '万</b>本周 ' + shortRange(s.twDays);
+        e.innerHTML = '<b>' + wan(s.tw.t, 2) + '万</b>本期 ' + shortRange(s.twDays);
       });
       var lg = $$('.mkt-legend span');
       if (lg[0]) lg[0].innerHTML = '<b style="color:#26ae81">' + oPct.toFixed(1) + '%</b>门诊 ' + wan(s.tw.o, 2) + '万';
       if (lg[1]) lg[1].innerHTML = '<b style="color:#2e8ee9">' + iPct.toFixed(1) + '%</b>住院 ' + wan(s.tw.i, 2) + '万';
       var ringCard = $$('.mkt-card').filter(function (c) { return /收入结构/.test(c.textContent); })[0];
       if (ringCard && ringCard.querySelector('.mkt-card-head p')) {
-        ringCard.querySelector('.mkt-card-head p').textContent = '本周 ' + shortRange(s.twDays) + ' · ' + (oPct >= iPct ? '门诊' : '住院') + '为主要收入来源';
+        ringCard.querySelector('.mkt-card-head p').textContent = '本期 ' + shortRange(s.twDays) + ' · ' + (oPct >= iPct ? '门诊' : '住院') + '为主要收入来源';
       }
     }
 
@@ -827,7 +836,7 @@
       var pmBadge = $('.priority-compare .mkt-badge');
       if (pmBadge && s.delta != null) pmBadge.textContent = '营业额 ' + sign(s.delta, 1) + '%';
       var pmP = $('.priority-compare .mkt-card-head p');
-      if (pmP) pmP.textContent = shortRange(s.twDays) + ' 与上周同期 ' + shortRange(s.sameDays) + ' 同口径（各 ' + s.tw.n + ' 天）';
+      if (pmP) pmP.textContent = shortRange(s.twDays) + ' 与上一期同期 ' + shortRange(s.sameDays) + ' 同口径（各 ' + s.tw.n + ' 天）';
       /* ⚠ 只更新「营业额」这一行（营收日报是其唯一来源，原有代码已处理）。
          「营销入院 / 营销对接」是管家台账口径、不由营收日报驱动，不要在这里改，
          否则会把 4→8 的管家口径偷偷换成全院入院口径。 */
@@ -856,7 +865,7 @@
     if (detail[0]) {
       var dp = detail[0].querySelector('p');
       if (dp) dp.innerHTML = '完成率<b>' + s.pct.toFixed(1) + '%</b>' + (diff >= 0 ? '低于' : '高于') + '时间进度' + s.timePct.toFixed(1) + '%。本期日均' + num(s.twAvg, 2) + '万（' + shortRange(s.twDays) + (s.missing.length ? '，' + shortRange(s.missing) + ' 待补' : '') + '），'
-        + (s.delta == null ? '暂无同期对照' : '较上周同期' + wan(s.same.t, 2) + '万' + (s.delta >= 0 ? '增长' : '下降') + Math.abs(s.delta).toFixed(1) + '%') + '；即使恢复到上周水平，也难以自然完成目标，必须明确新增收入来源。';
+        + (s.delta == null ? '暂无同期对照' : '较上一期同期' + wan(s.same.t, 2) + '万' + (s.delta >= 0 ? '增长' : '下降') + Math.abs(s.delta).toFixed(1) + '%') + '；即使恢复到上周水平，也难以自然完成目标，必须明确新增收入来源。';
     }
     var chain = $$('.dc-node');
     if (chain.length) {
@@ -879,9 +888,9 @@
       insights[1].querySelector('b').textContent = (+maxD.slice(5, 7)) + '.' + (+maxD.slice(8)) + ' ' + dowOf(maxD) + '贡献' + (maxA / s.rec7Agg.t * 100).toFixed(1) + '%';
       var g4 = insights[3];
       if (g4) {
-        g4.querySelector('b').textContent = '本周营收已有及时口径';
+        g4.querySelector('b').textContent = '本期营收已有及时口径';
         g4.querySelector('span').textContent = shortRange(s.twDays) + '合计' + wan(s.tw.t, 2) + '万、日均' + num(s.twAvg, 2) + '万'
-          + (s.delta == null ? '' : '，比上周同期' + (s.delta >= 0 ? '增长' : '下降') + Math.abs(s.delta).toFixed(1) + '%')
+          + (s.delta == null ? '' : '，比上一期同期' + (s.delta >= 0 ? '增长' : '下降') + Math.abs(s.delta).toFixed(1) + '%')
           + (s.missing.length ? '（' + shortRange(s.missing) + ' 日报待补）' : '') + '。';
       }
     }
@@ -898,13 +907,13 @@
       var dspan = shortRange(s.twDays) + '（' + t1.n + ' 天）';
       var outN = (P1.cover.first === t1.n && P1.cover.again === t1.n) ? (P1.first + P1.again) : null;
       var kvals = [
-        ['门诊收入', '¥' + wan(t1.o, 2) + '万', '占本周收入 ' + (t1.o / t1.t * 100).toFixed(1) + '%'],
-        ['住院收入', '¥' + wan(t1.i, 2) + '万', '占本周收入 ' + (t1.i / t1.t * 100).toFixed(1) + '%'],
+        ['门诊收入', '¥' + wan(t1.o, 2) + '万', '占本期收入 ' + (t1.o / t1.t * 100).toFixed(1) + '%'],
+        ['住院收入', '¥' + wan(t1.i, 2) + '万', '占本期收入 ' + (t1.i / t1.t * 100).toFixed(1) + '%'],
         ['门诊人次', outN == null ? '待补' : outN + '人',
          outN == null ? '初诊/复诊待补' : ('初诊 ' + P1.first + ' ＋ 复诊 ' + P1.again)],
-        ['本周入院', P1.admit + '人',
+        ['本期入院', P1.admit + '人',
          conv == null ? dspan : (dspan + ' · 初诊转入院 ' + conv.toFixed(1) + '%')],
-        ['本周出院', P1.disch + '人', dspan],
+        ['本期出院', P1.disch + '人', dspan],
         ['在院', P1.inhos == null ? '待补' : P1.inhos + '人',
          P1.inhosAt ? ((+P1.inhosAt.slice(5, 7)) + '.' + (+P1.inhosAt.slice(8))) + ' 最新时点' : '待补']
       ];
@@ -933,12 +942,12 @@
         var s2 = outs[1].querySelector('span'), v2 = outs[1].querySelector('b');
         if (s1) s1.textContent = '初诊转入院';
         if (v1) v1.textContent = P2.first > 0 ? (P2.admit / P2.first * 100).toFixed(1) + '%' : '—';
-        if (s2) s2.textContent = '本周出院';
+        if (s2) s2.textContent = '本期出院';
         if (v2) v2.textContent = P2.disch + '人';
       }
       var flowCard = $$('.mkt-card').filter(function (c) { return c.querySelector('.mkt-flow'); })[0];
       if (flowCard && flowCard.querySelector('.mkt-card-head p')) {
-        flowCard.querySelector('.mkt-card-head p').textContent = '本周 ' + shortRange(s.twDays) + ' · 出院独立作为患者池流出';
+        flowCard.querySelector('.mkt-card-head p').textContent = '本期 ' + shortRange(s.twDays) + ' · 出院独立作为患者池流出';
       }
     }
 
@@ -948,7 +957,7 @@
       var P3 = s.tw.p;
       src.textContent = '口径：本期 ' + shortRange(s.twDays) + '（各源数据截至 ' + cutTxt + '，营收日报至 ' + revTxt + '）＝营业额 ' + wan(s.tw.t, 2) + ' 万（门诊 ' + wan(s.tw.o, 2) + ' ＋ 住院 ' + wan(s.tw.i, 2) + '）、初诊 ' + P3.first + ' 人、入院 ' + P3.admit + ' 人、出院 ' + P3.disch + ' 人'
         + (P3.inhosAt ? '，' + ((+P3.inhosAt.slice(5, 7)) + '.' + (+P3.inhosAt.slice(8))) + ' 在院 ' + P3.inhos + ' 人' : '')
-        + '；对照上周同期 ' + shortRange(s.sameDays) + '（' + wan(s.same.t, 2) + ' 万）。上周完整周 ' + shortRange(s.lwDays) + ' 营收 ' + wan(s.lw.t, 2) + ' 万。月度目标 ' + MONTH_TARGET + ' 万，累计 ' + wan(s.mtd.t, 2) + ' 万（' + (s.cut ? (+s.cut.slice(5, 7)) + '月' + (+s.cut.slice(8)) + '日' : '—') + '）。导入新数据后先校验冲突，再更新看板。';
+        + '；对照上一期同期 ' + shortRange(s.sameDays) + '（' + wan(s.same.t, 2) + ' 万）。上一期完整 ' + shortRange(s.lwDays) + ' 营收 ' + wan(s.lw.t, 2) + ' 万。月度目标 ' + MONTH_TARGET + ' 万，累计 ' + wan(s.mtd.t, 2) + ' 万（' + (s.cut ? (+s.cut.slice(5, 7)) + '月' + (+s.cut.slice(8)) + '日' : '—') + '）。导入新数据后先校验冲突，再更新看板。';
     }
 
     /* ---- 数据口径风险卡里的营收部分 ---- */
@@ -978,10 +987,10 @@
       var vals = [
         ['在院人数', P.inhos == null ? '—' : String(P.inhos), '人',
          P.inhosAt ? ('最新时点 ' + ((+P.inhosAt.slice(5, 7)) + '.' + (+P.inhosAt.slice(8)))) : '待补'],
-        ['本周入院', String(P.admit), '人', span],
-        ['本周出院', String(P.disch), '人', span],
+        ['本期入院', String(P.admit), '人', span],
+        ['本期出院', String(P.disch), '人', span],
         ['门诊', outPat == null ? '—' : String(outPat), '人',
-         outPat == null ? '本周初诊/复诊待补' : (span + ' 营收日报')],
+         outPat == null ? '本期初诊/复诊待补' : (span + ' 营收日报')],
         ['物理治疗', null, null, null]      // 资产表口径，营收日报不含 → 不动
       ];
       kpis.slice(0, 5).forEach(function (k, i) {
@@ -1020,13 +1029,13 @@
         /* 月末收官：`剩余 0 天 / 日均需 0.00 万` 会误导，改为缺口口径 */
         gap.innerHTML = '<b>' + MONTH_LABEL + '已收官</b>（' + s.cutD + '/' + MONTH_DAYS + ' 天）：累计 <b>' + num(s.mtd.t / 10000, 2) + ' 万</b>，'
           + '完成目标 <b>' + s.pct.toFixed(1) + '%</b>，缺口 <b>' + num(s.leftAmt, 2) + ' 万</b>；'
-          + '上周完整周日均 <b>' + num(s.lwAvg / 10000, 2) + ' 万</b>、'
+          + '上一期日均 <b>' + num(s.lwAvg / 10000, 2) + ' 万</b>、'
           + '本期（' + shortRange(s.twDays) + '）日均 <b>' + num(s.twAvg, 2) + ' 万</b>。';
       } else {
         gap.innerHTML = '剩余 <b>' + s.leftDays + '</b> 天需 <b>' + num(s.leftAmt, 2) + ' 万</b>，'
-          + '日均需 <b>' + num(s.need, 2) + ' 万</b>；上周日均 <b>' + num(s.lwAvg / 10000, 2) + ' 万</b>、'
+          + '日均需 <b>' + num(s.need, 2) + ' 万</b>；上一期日均 <b>' + num(s.lwAvg / 10000, 2) + ' 万</b>、'
           + '本期（' + shortRange(s.twDays) + '）日均 <b>' + num(s.twAvg, 2) + ' 万</b>，'
-          + '缺口 <b>' + num(Math.max(0, s.gap), 2) + ' 万</b>。';
+          + (s.gap > 0 ? ('缺口 <b>' + num(s.gap, 2) + ' 万</b>。') : ('已高于达标日均 <b>' + num(-s.gap, 2) + ' 万</b>。'));
       }
     }
     var live = $$('.ov-live');

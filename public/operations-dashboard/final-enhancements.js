@@ -32,18 +32,18 @@
     var x=s.derive(),m=x.month,goal=(s.goal||GOAL_FALLBACK*10000)/10000;
     var done=m.total/10000, rem=x.remainingDays, gap=Math.max(0,goal-done);
     var need=rem?gap/rem:0;
-    /* ⚠⚠ 2026-10-06 修：「上周」原取「最后一个非本周的周」。
-       9 月时恰好等于上一完整周，但 10 月的 weeks 里含
-       10.26—10.31 这种**尚未发生**的周，取末项会得到未来周。
-       改为取「本周在数组中的前一项」（＝紧邻的上一周）。 */
-    var _ci=-1;
-    (x.weeks||[]).forEach(function(q,i){ if(q.current) _ci=i; });
-    var lw=null, pw=null;
-    if(_ci>0){ lw=x.weeks[_ci-1]; pw=(_ci>1)?x.weeks[_ci-2]:null; }
-    else if(_ci<0 && x.weeks.length){ lw=x.weeks[x.weeks.length-1]; }
-    if(!lw) lw=x.weeks[x.weeks.length-1];
-    var lwAvg=lw.days?lw.total/10000/lw.days:0;
-    var pwAvg=(pw&&pw.days)?pw.total/10000/pw.days:0;
+    /* ⭐⭐ 对照期一律用数据层给的「本期 / 上一期」（业主 2026-10-06：本期＝两周窗口 9.28—10.11）。
+       原先取 weeks[] 里「本周的前一项」——本期改成两周窗口后，那一项会落到**本期内部**
+       （10.1—10.4），标签却写「上周」，语义自相矛盾；更早的版本还会取到未发生的未来周。 */
+    var _per=x.period||{}, _pp=x.prevPeriod||{};
+    var _agg=function(from,to){var R=s.subset(from,to),t=0;R.forEach(function(r){t+=r.total;});
+      return {t:t,n:R.length,a:R.length?t/R.length/10000:0};};
+    var _lw=_agg(_pp.from,_pp.to);
+    /* 上上期＝再往前一个等长区间（仅用于「环比节奏」对照） */
+    var _prevRows=s.rows.filter(function(r){return _pp.from&&r.date<_pp.from;});
+    var _pp2=_prevRows.slice(Math.max(0,_prevRows.length-14)), _pp2t=0;
+    _pp2.forEach(function(r){_pp2t+=r.total;});
+    var lwAvg=_lw.a, pwAvg=_pp2.length?(_pp2t/_pp2.length/10000):0, lwLabel=_pp.label||'';
     var cw=x.currentWeek, cwAvg=cw.days?cw.total/10000/cw.days:0;
     var fcst=done+rem*lwAvg, scn=done+rem*cwAvg;
     /* ⚠⚠ 2026-10-06 修：原遍历 s.rows（＝全部日期，含 9 月整月）。
@@ -63,7 +63,7 @@
     return {
       closed:closed, rate:goal?done/goal*100:0,
       wkDelta:(pwAvg?(lwAvg/pwAvg-1)*100:0),
-      lwLabel:(lw&&lw.label)||'', pwLabel:(pw&&pw.label)||'',
+      lwLabel:lwLabel, pwLabel:_pp2.length?('上上期'):'', perLabel:_per.label||'',
       goal:goal, done:done, rem:rem, gap:gap, need:need,
       lwAvg:lwAvg, cwAvg:cwAvg, fcst:fcst, delta:fcst-goal,
       speed:lwAvg?(need/lwAvg-1)*100:0, scn:scn,
@@ -77,7 +77,7 @@
       mDays:mDays, mTotalDays:(x.monthDays||31),
       days:s.rows.length, cut:mdOf(s.updatedThrough||x.lastDate),
       /* ⚠ 收官后 scn/fcst 会退化成月累计（rem=0 时 =done），不能直接当「本周/上周完整周」用 */
-      cwTotalWan:cw.total/10000, lwTotalWan:(lw?lw.total/10000:0),
+      cwTotalWan:cw.total/10000, lwTotalWan:_lw.t/10000,
       /* ⚠ cutShort 的月份必须从日期取（原文硬编码 '9.'，跨月后 10.4 会显示成 9.4） */
       cutShort: (function () {
         var _d = String(s.updatedThrough || x.lastDate || '');
@@ -101,16 +101,16 @@
       +   (f.closed
             ? '<div class="finance-kpi warn"><span>目标达成率</span><strong>'+num(f.rate,1)+'%</strong><em>'+FE_LAB_SP+'已收官 · 缺口 '+num(f.gap)+' 万</em></div>'
             : '<div class="finance-kpi warn"><span>达标所需日均</span><strong>'+num(f.need)+'万</strong><em>剩余 '+f.rem+' 天</em></div>')
-      +   '<div class="finance-kpi"><span>基准情景预测</span><strong>'+num(f.fcst)+'万</strong><em>按上周日均 '+num(f.lwAvg)+'万</em></div>'
+      +   '<div class="finance-kpi"><span>基准情景预测</span><strong>'+num(f.fcst)+'万</strong><em>按上一期日均 '+num(f.lwAvg)+'万</em></div>'
       +   '<div class="finance-kpi '+(f.delta<0?'bad':'')+'"><span>预测目标差额</span><strong>'+sgn(f.delta)+'万</strong><em>基准情景</em></div>'
       +   (f.closed
-            ? '<div class="finance-kpi"><span>周环比节奏</span><strong>'+(f.wkDelta>=0?'+':'')+num(f.wkDelta,1)+'%</strong><em>上周 vs 上上周日均</em></div>'
-            : '<div class="finance-kpi '+(f.speed>0?'warn':'')+'"><span>所需提速</span><strong>'+(f.speed>=0?'+':'')+num(f.speed,1)+'%</strong><em>相较上周日均</em></div>')
+            ? '<div class="finance-kpi"><span>周环比节奏</span><strong>'+(f.wkDelta>=0?'+':'')+num(f.wkDelta,1)+'%</strong><em>上一期 vs 上上期日均</em></div>'
+            : '<div class="finance-kpi '+(f.speed>0?'warn':'')+'"><span>所需提速</span><strong>'+(f.speed>=0?'+':'')+num(f.speed,1)+'%</strong><em>相较上一期日均</em></div>')
       + '</div>'
       + '<div class="finance-body">'
       +   '<div class="scenario"><h4>'+(f.closed?(FE_LAB_SP+'营收收官对比'):'月末营收情景测算')+'</h4>'
-      +     '<div class="scenario-row"><span>'+(f.closed?('本周（'+f.cwDays+' 天）已发生'):'当前速度')+'</span><div class="scenario-bar"><i style="width:'+(f.closed?wCW:f.scn/f.goal*100).toFixed(1)+'%"></i></div><b>'+num(f.closed?f.cwTotalWan:f.scn)+'</b></div>'
-      +     '<div class="scenario-row"><span>'+(f.closed?'上周完整周 9.21—9.27':'上周速度')+'</span><div class="scenario-bar"><i style="width:'+(f.closed?wLW:f.fcst/f.goal*100).toFixed(1)+'%"></i></div><b>'+num(f.closed?f.lwTotalWan:f.fcst)+'</b></div>'
+      +     '<div class="scenario-row"><span>'+(f.closed?('本期（'+f.cwDays+' 天）已发生'):'当前速度')+'</span><div class="scenario-bar"><i style="width:'+(f.closed?wCW:f.scn/f.goal*100).toFixed(1)+'%"></i></div><b>'+num(f.closed?f.cwTotalWan:f.scn)+'</b></div>'
+      +     '<div class="scenario-row"><span>'+(f.closed?('上一期 '+f.lwLabel):'上一期速度')+'</span><div class="scenario-bar"><i style="width:'+(f.closed?wLW:f.fcst/f.goal*100).toFixed(1)+'%"></i></div><b>'+num(f.closed?f.lwTotalWan:f.fcst)+'</b></div>'
       +     '<div class="scenario-row goal"><span>月度目标</span><div class="scenario-bar"><i style="width:100%"></i></div><b>'+num(f.goal)+'</b></div>'
       +   '</div>'
       +   '<div class="quality"><h4>收入质量观察</h4><div class="quality-grid">'
@@ -119,7 +119,7 @@
       +     '<div class="quality-item"><small>周末贡献</small><b>'+num(f.wkShare,1)+'%</b></div>'
       +     '<div class="quality-item"><small>单日最高占比</small><b>'+num(f.mxShare,1)+'%</b></div>'
       +   '</div><div class="finance-note">以上四项均为 '+FE_LAB+'累计口径（含周末 '+f.wkDays+' 天），'
-      +   '单日最高出现在 '+f.mxDate+'。'+(f.closed?'<b>'+FE_LAB_SP+'已收官</b>：累计＝实际发生额；本周＝'+(f.cwDays||0)+' 天已发生日均。':'当前速度＝本月累计＋剩余天数×'+(f.cwDays||0)+' 天日均；上周速度＝本月累计＋剩余天数×上周（'+f.lwLabel+'）日均。')
+      +   '单日最高出现在 '+f.mxDate+'。'+(f.closed?'<b>'+FE_LAB_SP+'已收官</b>：累计＝实际发生额；本期＝'+(f.cwDays||0)+' 天已发生日均。':'当前速度＝本月累计＋剩余天数×本期（'+(f.cwDays||0)+' 天）日均；上一期速度＝本月累计＋剩余天数×上一期（'+f.lwLabel+'）日均。')
       +   '成本、折扣退费、应收账款尚未接入，因此暂不能严谨计算利润率、毛利率与现金流。</div></div>'
       + '</div>';
   }

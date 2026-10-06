@@ -28,25 +28,20 @@
     need: MDFv(f.needDailyWan,'8.28'), remainWan: MDFv(f.remainWan,'215.35'),
     avg: MDFv(f.mtdAvgWan,'8.93')
   }; }
-  /* ⭐ 本周标签按**实际有数据的末日**生成：数据至 10.1 →「本周（9.28—10.1）」；
-     不写死 10.4，否则会让人以为 10.2—10.4 也有数据。
-     ⚠ 下面 WEEK_SUFFIX / WEEK_LABEL_RE 都从 WEEK 派生，改这里即可，勿单独改一处。 */
+  /* ⭐⭐ 本期（观察期）标签（2026-10-06 业主定：所有「本期」时间戳与洞察按 9.28—10.11 算）。
+     区间唯一真源＝数据层 derive().period（两周窗口），不再自己按自然周推导
+     —— 原先本地推导只能得到单周「本周（10.5）」，与业主口径不符。
+     ⚠ 下方 WEEK_SHORT（归一化替换文本）与 WEEK_LABEL_RE 都在这一带定义，勿分散改。 */
 var WEEK=(function(){
-var _d=window.SEPTEMBER_REVENUE_DATA, _r=(_d&&_d.rows)||[];
+var _d=window.SEPTEMBER_REVENUE_DATA||{}, _r=_d.rows||[];
+var _x=(typeof _d.derive==='function')?(function(){try{return _d.derive()||{}}catch(e){return {}}})():{};
+var _p=_x.period||{};
+var _from=_p.from||'2026-09-28', _to=_p.to||'2026-10-11';
+function _md(d){return (+d.slice(5,7))+'.'+(+d.slice(8));}
 var _last=_r.length?_r[_r.length-1].date:'';
-var _end=_last||'2026-10-04';
-/* ⚠ 周一不可硬编码 9.28（原文写死 '本周（9.28—'，进 10 月后一旦数据末日跨到下一周就会错）。
-   改为从数据末日反推所在自然周的周一；并给出「本周是否已完整（末日＝周日）」标记。 */
-var _dt=new Date(_end+'T00:00:00');
-var _mon=new Date(_dt.getTime()-((_dt.getDay()===0?6:_dt.getDay()-1))*86400000);
-function _s(o){return o.getFullYear()+'-'+String(o.getMonth()+1).padStart(2,'0')+'-'+String(o.getDate()).padStart(2,'0');}
-window.__WEEK_DONE = (_dt.getDay()===0);
-/* ⚠ 周一与末日相同（本周才刚开始、只录了 1 天，如 10.5 周一）时不能写成「10.5—10.5」，
-   单日周直接写「本周（10.5）」。 */
-var _monS=_s(_mon);
-var _a=(+_monS.slice(5,7))+'.'+(+_monS.slice(8));
-var _b=(+_end.slice(5,7))+'.'+(+_end.slice(8));
-return '本周（'+(_monS===_end?_a:_a+'—'+_b)+'）';
+/* 「本期是否已完整」＝数据末日是否已到本期终点（原 __WEEK_DONE 用「末日＝周日」判断） */
+window.__WEEK_DONE = !!(_last && _last>=_to);
+return '本期（'+(_from===_to?_md(_from):(_md(_from)+'—'+_md(_to)))+'）';
 })();
   /* 归一化的「排除项」必须是**当前** WEEK 标签本身，否则已带标签的文案会被再追加一次：
      「本周（9.28—10.1）」→「本周（9.28—10.1）（9.28—10.1）」（周窗口滚动后实测命中，部门卡脚注重复）。
@@ -55,8 +50,12 @@ return '本周（'+(_monS===_end?_a:_a+'—'+_b)+'）';
      不是整条 WEEK —— 被匹配的是「本周」，紧随其后的是「（9.28—10.1）」。
      写成整条 WEEK 会让断言恒真 → 每渲染一次就再追加一次标签
      （实测出现「本周（9.28—10.1）（9.28—10.1）期内单日高点」）。 */
-  var WEEK_SUFFIX=WEEK.replace(/^本周/,'');
-  var WEEK_LABEL_RE=new RegExp('本周(?!'+WEEK_SUFFIX.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','g');
+  /* ⭐ 归一化用的替换文本是**简称「本期」**（不是带区间的 WEEK）：
+     index.html 里大量结构标题写的是裸「本周」（「本周协同任务」「本周经营总览」…），
+     若替换成「本期（9.28—10.11）」会变成又长又怪的标题。
+     需要区间的场合（本模块自己的模板）一律显式使用 WEEK。 */
+  var WEEK_SHORT='本期';
+  var WEEK_LABEL_RE=/本周/g;
   /* ⚠ 称呼已改：原先叫「上周（9.21—9.27）」，但营收周口径滚动到 10 月后
      「上周」应为 9.28—10.4，沿用旧称呼会张冠李戴。
      这几张部门台账（心理 / 客服）**尚未收到新一周数据**，故按各自最新周显式标注区间。 */
@@ -75,7 +74,7 @@ return '本周（'+(_monS===_end?_a:_a+'—'+_b)+'）';
     alerts:[
       {tone:'red',icon:'↘',tag:'高风险',title:'营收速度不足',copy:'截至'+MDFt().dateCN+'金额完成'+MDFt().amt+'%，落后时间进度1.0个百分点，剩余 26 天仍需 215.35 万元。'},
       {tone:'orange',icon:'◆',tag:'结构风险',title:'收入集中在少数高峰日',copy:'10月1日16.22万元为月内单日最高，10月2日10.44万元、10月5日7.08万元次之。'},
-      {tone:'purple',icon:'＋',tag:'患者池变化',title:'本周净减2人',copy:'10.5 入院0人、出院2人，10.5 日终在院37人。'},
+      {tone:'purple',icon:'＋',tag:'患者池变化',title:'本期净减2人',copy:'10.5 入院0人、出院2人，10.5 日终在院37人。'},
       {tone:'blue',icon:'✓',tag:'已核验',title:'5天累计连续勾稽',copy:'10月1—10月5日每日合计与累计连续一致，区间内无缺日。'}
     ],
     daily:[
@@ -89,7 +88,7 @@ return '本周（'+(_monS===_end?_a:_a+'—'+_b)+'）';
       {label:'门诊',value:'15人次'},{label:'入院',value:'0人'},{label:'出院',value:'2人'},{label:'在院',value:'37人'}
     ],
     departments:[
-      {key:'doctor',cls:'doctor',icon:'医',name:'医生组',desc:'住院规模与管床贡献',metric:'34 人',note:'在院 · 9.30 时点',foot:'本周入院 7 · 出院 6'},
+      {key:'doctor',cls:'doctor',icon:'医',name:'医生组',desc:'住院规模与管床贡献',metric:'34 人',note:'在院 · 9.30 时点',foot:'本期入院 7 · 出院 6'},
       {key:'nursing',cls:'nursing',icon:'护',name:'护理组',desc:'治疗执行与服务兑现',metric:'95.2%',note:'物理治疗完成率（项目口径 · 9.20—9.26）',foot:'应做 495 · 未做 24'},
       {key:'psychology',cls:'psychology',icon:'心',name:'心理咨询组',desc:'咨询承接与收入结构',metric:'65 人次',note:PWEEK+'患者接触',foot:'9.14—9.20 为 40（+62.5%）'},
       {key:'service',cls:'service',icon:'客',name:'客服服务部',desc:'随访、到院及付费跟踪',metric:'52 条',note:PWEEK+'回访台账（已录至 9.24）',foot:'到院 18 · 34.6%'},
@@ -100,7 +99,7 @@ return '本周（'+(_monS===_end?_a:_a+'—'+_b)+'）';
       nursing:[['何X','护理组','综合 0.9432 · 周总 24.93','工作量×质控（源表口径）','动态试算'],['李X','护理组','综合 0.9406 · 周总 25.68','工作量×质控（源表口径）','动态试算'],['沈X','护理组','综合 0.8764','工作量×质控（源表口径）','动态试算'],['刘X','护理组','综合 0.8640','工作量×质控（源表口径）','动态试算'],['赵X2','护理组','综合 0.8596','工作量×质控（源表口径）','动态试算']],
       psychology:[['冯X','心理咨询组','综合 0.9946 · 咨询 47 / 接触 61','累计 8.31—9.26 · 咨询2:接触1','动态试算'],['蔡X','心理咨询组','综合 0.9839 · 咨询 47 / 接触 59','累计 8.31—9.26 · 咨询2:接触1','动态试算'],['杨X4','心理咨询组','综合 0.5177 · 咨询 13 / 接触 62','累计 8.31—9.26 · 咨询2:接触1','动态试算'],['赵X3','心理咨询组','综合 0.3814 · 咨询 14 / 接触 34','累计 8.31—9.26 · 咨询2:接触1','动态试算'],['王X3','心理咨询组','综合 0.2659 · 咨询 7 / 接触 31','累计 8.31—9.26 · 咨询2:接触1','动态试算']],
       service:[['蒋X','客服服务部','日均 281.5 分 · 回访 29 条','日工作量（按日均）','动态试算'],['温X','客服服务部','日均 271.6 分 · 主动服务 9 条','日工作量（按日均）','动态试算'],['陈X3','客服服务部','日均 134.4 分 · 主动服务 9 条','日工作量（按日均）','动态试算'],['黄X','客服服务部','日均 133.5 分 · 主动服务 7 条','日工作量（按日均）','动态试算'],['张X2','客服服务部','日均 104.0 分 · 主动服务 7 条','日工作量（按日均）','动态试算']],
-      marketing:[['管家B','营销组','转住院率 29.2%','对接 24 条','趋势参考'],['管家C','营销组','转住院率 21.4%','对接 14 条','趋势参考'],['管家A','营销组','转住院率 13.3%','对接 30 条','趋势参考'],['管家D','营销组','本周无新增对接','—','待核'],['管家E','营销组','本周无新增对接','—','待核']]
+      marketing:[['管家B','营销组','转住院率 29.2%','对接 24 条','趋势参考'],['管家C','营销组','转住院率 21.4%','对接 14 条','趋势参考'],['管家A','营销组','转住院率 13.3%','对接 30 条','趋势参考'],['管家D','营销组','本期无新增对接','—','待核'],['管家E','营销组','本期无新增对接','—','待核']]
     }
   };
 
@@ -132,9 +131,9 @@ baseData.kpis=[
     var _closed=(x.remainingDays===0);
     baseData.target={closed:_closed,actual:Number(fmt(m.total)),goal:260,amountRate:Number(x.amountRate.toFixed(1)),timeRate:Number(x.timeRate.toFixed(1)),gap:Number((x.timeRate-x.amountRate).toFixed(1)),days:x.remainingDays,remaining:Number(fmt(x.remaining)),requiredDaily:Number(fmt(x.requiredDaily)),currentDaily:Number(fmt(w.average)),dailyGap:Number(fmt(x.requiredDaily-w.average))};
     baseData.alerts=[
-      {tone:'red',icon:'↘',tag:'高风险',title:'营收速度不足',copy:'截至'+md(last.date)+'金额完成'+x.amountRate.toFixed(1)+'%，落后时间进度'+(x.timeRate-x.amountRate).toFixed(1)+'个百分点，'+(x.remainingDays===0?(MD_LABEL_SP+'已收官，缺口 '+fmt(x.remaining)+' 万元，月度目标未达成。'):('剩余 '+x.remainingDays+' 天、日均需 '+fmt(x.requiredDaily)+' 万元。'))},
+      {tone:'red',icon:'↘',tag:'高风险',title:'营收速度不足',copy:'截至'+md(last.date)+'金额完成'+x.amountRate.toFixed(1)+'%，'+((x.timeRate-x.amountRate)>=0?'低于':'高于')+'时间进度 '+Math.abs(x.timeRate-x.amountRate).toFixed(1)+' 个百分点，'+(x.remainingDays===0?(MD_LABEL_SP+'已收官，缺口 '+fmt(x.remaining)+' 万元，月度目标未达成。'):('剩余 '+x.remainingDays+' 天、日均需 '+fmt(x.requiredDaily)+' 万元。'))},
       {tone:'orange',icon:'◆',tag:'结构风险',title:'收入集中在少数高峰日',copy:(function(){var _t=(x.topDays||[]).slice(0,3).map(function(r){return (+r.date.slice(5,7))+'月'+(+r.date.slice(8))+'日'+fmt(r.total)+'万';});return (_t.length?(_t[0]+'为'+MD_LABEL+'内单日最高'+(_t.length>1?('（'+_t.slice(1).join('、')+'次之）'):'')):('（'+MD_LABEL+'内数据不足）'))+'，周末日均'+fmt(x.weekend.average)+'万元，平日日均'+fmt(x.weekday.average)+'万元。';})()},
-      {tone:'purple',icon:'＋',tag:'患者池变化',title:'本周患者池'+(w.admissions-dis>=0?'净增':'净减')+Math.abs(w.admissions-dis)+'人',copy:'入院'+w.admissions+'人、出院'+dis+'人，'+(lw.date?md(lw.date):'')+'日终在院'+lw.value+'人。'},
+      {tone:'purple',icon:'＋',tag:'患者池变化',title:'本期患者池'+(w.admissions-dis>=0?'净增':'净减')+Math.abs(w.admissions-dis)+'人',copy:'入院'+w.admissions+'人、出院'+dis+'人，'+(lw.date?md(lw.date):'')+'日终在院'+lw.value+'人。'},
       {tone:'blue',icon:'✓',tag:'已核验',title:m.days+'天累计连续勾稽',copy:MD_LABEL+'1日—'+md(last.date)+'每日合计与累计连续一致；'+MD_LABEL+'内 '+m.days+' 天无缺日。'}
     ];
     /* ⚠ 待补日不能硬编码 9.26/9.27：数据真到 9.26 后会重复出现两根「待更新」柱。
@@ -143,8 +142,9 @@ baseData.kpis=[
     /* 逐日柱：9.21—9.30（上周完整周 + 本周进行中 3 天），不预置未来日期 */
     var _pend=[];
     baseData.daily=source.rows.filter(function(r){return r.date>=x.monthFirst&&r.date<=x.monthLast;}).map(function(r){return {d:r.date.slice(5).replace('-','.'),v:r.total/10000};}).concat(_pend);
-    /* ⚠ 原按固定数组下标判断本周 —— 周窗口滚动后指向的不是本周。改为用 derive() 给的 current 标记。 */
-    baseData.weeks=x.weeks.map(function(q){return {label:q.label,value:q.total/10000,current:!!q.current};});
+    /* ⚠ 原按固定数组下标判断本周 —— 周窗口滚动后指向的不是本周。
+       本期＝两周窗口，故标记**落在本期内的所有周**（当前为 10.1—10.4 与 10.5—10.11）。 */
+    baseData.weeks=x.weeks.map(function(q){return {label:q.label,value:q.total/10000,current:!!(q.inPeriod||q.current)};});
     baseData.funnelAdm=w.admissions;baseData.funnelDis=dis;baseData.funnelNet=w.admissions-dis;
     baseData.funnelWard=(lw.value==null?'待补':lw.value);
     baseData.funnelWardAt=(lw.date?(+lw.date.slice(5,7))+'.'+(+lw.date.slice(8)):'');
@@ -212,12 +212,12 @@ baseData.kpis=[
     return '<div class="md-dashboard" id="monthCommandCenter">'+
       '<section class="md-hero-grid" aria-label="月累计经营总览">'+
         '<article class="md-card md-summary"><header class="md-card-title"><div><h2>'+MD_LABEL+'经营总览</h2><p>月累计与 '+WEEK+' 关键指标</p></div><span class="md-live"><i></i>每日 09:00 更新</span></header><div class="md-kpis">'+kpis()+'</div></article>'+
-        '<article class="md-card md-target md-click" tabindex="0" role="button" data-md-panel="target"><header class="md-card-title"><div><h2>'+MD_LABEL+'营收目标与预测</h2><p>金额进度与时间进度双轨监测</p></div><span class="md-period-pill">'+MD_PILL+'</span></header><div class="md-amount"><strong>'+esc(data.target.actual)+'</strong><span>／'+esc(data.target.goal)+' 万</span></div><div class="md-progress" aria-label="金额完成 '+esc(data.target.amountRate)+'%，时间进度 '+esc(data.target.timeRate)+'%"><i style="width:'+esc(data.target.amountRate)+'%"></i><u style="left:'+esc(data.target.timeRate)+'%"></u></div><div class="md-progress-label"><div><span>金额完成</span><b>'+esc(data.target.amountRate)+'%</b></div><div><span>时间进度</span><b>'+esc(data.target.timeRate)+'%</b></div><div><span>进度差</span><b class="'+((Number(data.target.gap)>=0)?'warn':'')+'">'+(Number(data.target.gap)>=0?'落后 ':'领先 ')+Math.abs(Number(data.target.gap))+'pt</b></div></div><p class="md-target-copy">'+(data.target.closed?((MD_LABEL_SP+'已收官（'+MD_MDAYS+' 天）：累计 '+esc(data.target.actual)+' 万元，完成目标 '+esc(data.target.amountRate)+'%，<b>缺口 '+esc(data.target.remaining)+' 万元</b>；'+WEEK+'实际日均 '+esc(data.target.currentDaily)+' 万元。')):('剩余 '+esc(data.target.days)+' 天需 '+esc(data.target.remaining)+' 万元，日均需 '+esc(data.target.requiredDaily)+' 万元；'+WEEK+'实际日均 '+esc(data.target.currentDaily)+' 万元，真实缺口 '+esc(data.target.dailyGap)+' 万元。'))+'</p>'+(src?'<img class="md-mascot" src="'+esc(src)+'" alt="医院吉祥物">':'')+'</article>'+
+        '<article class="md-card md-target md-click" tabindex="0" role="button" data-md-panel="target"><header class="md-card-title"><div><h2>'+MD_LABEL+'营收目标与预测</h2><p>金额进度与时间进度双轨监测</p></div><span class="md-period-pill">'+MD_PILL+'</span></header><div class="md-amount"><strong>'+esc(data.target.actual)+'</strong><span>／'+esc(data.target.goal)+' 万</span></div><div class="md-progress" aria-label="金额完成 '+esc(data.target.amountRate)+'%，时间进度 '+esc(data.target.timeRate)+'%"><i style="width:'+esc(data.target.amountRate)+'%"></i><u style="left:'+esc(data.target.timeRate)+'%"></u></div><div class="md-progress-label"><div><span>金额完成</span><b>'+esc(data.target.amountRate)+'%</b></div><div><span>时间进度</span><b>'+esc(data.target.timeRate)+'%</b></div><div><span>进度差</span><b class="'+((Number(data.target.gap)>=0)?'warn':'')+'">'+(Number(data.target.gap)>=0?'落后 ':'领先 ')+Math.abs(Number(data.target.gap))+'pt</b></div></div><p class="md-target-copy">'+(data.target.closed?((MD_LABEL_SP+'已收官（'+MD_MDAYS+' 天）：累计 '+esc(data.target.actual)+' 万元，完成目标 '+esc(data.target.amountRate)+'%，<b>缺口 '+esc(data.target.remaining)+' 万元</b>；'+WEEK+'实际日均 '+esc(data.target.currentDaily)+' 万元。')):('剩余 '+esc(data.target.days)+' 天需 '+esc(data.target.remaining)+' 万元，日均需 '+esc(data.target.requiredDaily)+' 万元；'+WEEK+'实际日均 '+esc(data.target.currentDaily)+' 万元，'+((Number(data.target.dailyGap)>0)?('真实缺口 '+esc(data.target.dailyGap)+' 万元。'):('已高于达标日均 '+Math.abs(Number(data.target.dailyGap)).toFixed(2)+' 万元。'))))+'</p>'+(src?'<img class="md-mascot" src="'+esc(src)+'" alt="医院吉祥物">':'')+'</article>'+
       '</section>'+
       '<section class="md-alerts" aria-label="重点经营问题">'+alerts()+'</section>'+
       '<div class="md-section-head"><div><h2>营业与转化分析</h2><p>从逐日收入、周度趋势到跨部门服务兑现</p></div><button class="md-more" data-md-panel="analysis" type="button">查看完整分析</button></div>'+
       '<section class="md-analysis-grid">'+
-        '<article class="md-card md-chart-card md-click" tabindex="0" role="button" data-md-panel="daily"><header class="md-chart-top"><div><h3>'+MD_NUM+'.1—'+MDFt().date+' 逐日营业额</h3><p>单位：万元 · 截至 '+(lastDateMd()||'—')+'，本周剩余天数待更新</p></div><span class="md-chart-badge">日均 '+MDFt().avg+' 万</span></header><div class="md-bars">'+bars()+'</div><p class="md-chart-note">截至'+MDFt().dateCN+'累计'+MDFt().total+'万元；本周期内单日高点见柱状图。</p></article>'+
+        '<article class="md-card md-chart-card md-click" tabindex="0" role="button" data-md-panel="daily"><header class="md-chart-top"><div><h3>'+MD_NUM+'.1—'+MDFt().date+' 逐日营业额</h3><p>单位：万元 · 截至 '+(lastDateMd()||'—')+'，本周剩余天数待更新</p></div><span class="md-chart-badge">日均 '+MDFt().avg+' 万</span></header><div class="md-bars">'+bars()+'</div><p class="md-chart-note">截至'+MDFt().dateCN+'累计'+MDFt().total+'万元；本期单日高点见柱状图。</p></article>'+
         '<div class="md-side-stack"><article class="md-card md-week-card md-click" tabindex="0" role="button" data-md-panel="weeks"><header class="md-card-title"><div><h3>'+MD_LABEL+'各周营业对比</h3><p>'+WEEK+'为进行中（数据至 '+(lastDateMd()||'—')+'）</p></div><b style="color:#15976c">月累计 '+MDFt().total+' 万</b></header><div class="md-week-list">'+weeks()+'</div></article><article class="md-card md-funnel md-click" tabindex="0" role="button" data-md-panel="funnel"><header class="md-card-title"><div><h3>'+WEEK+'经营流量</h3><p>门诊、入院、出院为同期数量，不直接计算转化率</p></div><span class="md-severity" style="color:#d57e1c">截至'+MDFt().date+'</span></header><div class="md-funnel-steps">'+funnel()+'</div><p class="md-funnel-foot">'+WEEK+'入院'+esc(data.funnelAdm)+'人、出院'+esc(data.funnelDis)+'人，患者池'+(data.funnelNet>=0?'净增':'净减')+Math.abs(data.funnelNet)+'人；'+esc(data.funnelWardAt)+'日终在院'+esc(data.funnelWard)+'人。</p></article></div>'+
       '</section>'+
       '<div class="md-section-head"><div><h2>部门经营</h2><p>点击任一部门，查看完整数据、趋势、排名与行动建议</p></div></div><section class="md-departments">'+departments()+'</section>'+
@@ -244,9 +244,9 @@ baseData.kpis=[
     if(!root||root.nodeType!==1)return;
     var walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:function(node){var p=node.parentElement;if(!p||/^(SCRIPT|STYLE|TEXTAREA|INPUT)$/.test(p.tagName))return NodeFilter.FILTER_REJECT;return node.nodeValue&&node.nodeValue.indexOf('本周')>-1?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;}}),nodes=[],x;
     while((x=walker.nextNode()))nodes.push(x);
-    nodes.forEach(function(t){t.nodeValue=t.nodeValue.replace(WEEK_LABEL_RE,WEEK);});
+    nodes.forEach(function(t){t.nodeValue=t.nodeValue.replace(WEEK_LABEL_RE,WEEK_SHORT);});
   }
-  function normalizeAll(){normalizeNode(document.body);document.querySelectorAll('[title],[aria-label]').forEach(function(el){['title','aria-label'].forEach(function(a){var v=el.getAttribute(a);if(v&&v.indexOf('本周')>-1)el.setAttribute(a,v.replace(WEEK_LABEL_RE,WEEK));});});}
+  function normalizeAll(){normalizeNode(document.body);document.querySelectorAll('[title],[aria-label]').forEach(function(el){['title','aria-label'].forEach(function(a){var v=el.getAttribute(a);if(v&&v.indexOf('本周')>-1)el.setAttribute(a,v.replace(WEEK_LABEL_RE,WEEK_SHORT));});});}
 
   function mount(){
     if(document.getElementById('monthCommandCenter'))return;

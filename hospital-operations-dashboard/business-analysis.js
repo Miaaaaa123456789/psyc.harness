@@ -34,15 +34,15 @@
   var BA_NUM=+BA_MONTH.slice(5,7), BA_LAB=BA_NUM+'月', BA_LAB_SP=BA_NUM+' 月', BA_DOT=BA_NUM+'.1';
   function buildHTML() {
     var f = F() || {};
-    var lastShort = txt(f.labelDateShort, '10.5');            // 10.5
-    var remainDays = txt(f.remainDays, 0);
-    var totalWan = txt(f.totalWan, '44.65');
-    var amountRate = (f.amountRate != null) ? f.amountRate.toFixed(1) : '17.2';
-    var timeRate = (f.timeRate != null) ? f.timeRate.toFixed(1) : '16.1';
-    var lagPt = (f.lagPt != null) ? f.lagPt.toFixed(1) : '-1.1';
-    var remainWan = txt(f.remainWan, '215.35');
-    var needDailyWan = txt(f.needDailyWan, '8.28');
-    var mtdAvgWan = txt(f.mtdAvgWan, '8.93');
+    var lastShort = txt(f.labelDateShort, '10.6');            // 10.5
+    var remainDays = txt(f.remainDays, 25);
+    var totalWan = txt(f.totalWan, '57.15');
+    var amountRate = (f.amountRate != null) ? f.amountRate.toFixed(1) : '22.0';
+    var timeRate = (f.timeRate != null) ? f.timeRate.toFixed(1) : '19.4';
+    var lagPt = (f.lagPt != null) ? f.lagPt.toFixed(1) : '-2.6';
+    var remainWan = txt(f.remainWan, '202.85');
+    var needDailyWan = txt(f.needDailyWan, '8.11');
+    var mtdAvgWan = txt(f.mtdAvgWan, '9.53');
     var gapDailyWan = txt(f.gapDailyWan, '0.00');
     var forecastWan = txt(f.forecastWan, '227.17');
     var forecastGapWan = txt(f.forecastGapWan, '32.83');
@@ -80,13 +80,13 @@
   function decorateShell() {
     var f = F() || {};
     var shell=document.querySelector('.mkt-v2');if(!shell)return;
-    var lastShort = txt(f.labelDateShort, '10.5');
-    var remainDays = txt(f.remainDays, 26);
-    var totalWan = txt(f.totalWan, '44.65');
-    var amountRate = (f.amountRate!=null)?f.amountRate.toFixed(1):'17.2';
-    var remainWan = txt(f.remainWan, '215.35');
-    var needDailyWan = txt(f.needDailyWan, '8.28');
-    var mtdAvgWan = txt(f.mtdAvgWan, '8.93');
+    var lastShort = txt(f.labelDateShort, '10.6');
+    var remainDays = txt(f.remainDays, 25);
+    var totalWan = txt(f.totalWan, '57.15');
+    var amountRate = (f.amountRate!=null)?f.amountRate.toFixed(1):'22.0';
+    var remainWan = txt(f.remainWan, '202.85');
+    var needDailyWan = txt(f.needDailyWan, '8.11');
+    var mtdAvgWan = txt(f.mtdAvgWan, '9.53');
     var gapDailyWan = txt(f.gapDailyWan, '0.00');
     var weekVal = shell.querySelector('.mkt-amount');
     if(weekVal){

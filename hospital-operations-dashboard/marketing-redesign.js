@@ -12,7 +12,7 @@
   const _amountRate=F(_f.amountRate!=null?_f.amountRate.toFixed(1):null,'68.5');
   const _timeRate=F(_f.timeRate!=null?_f.timeRate.toFixed(1):null,'83.3');
   const _lagPt=F(_f.lagPt!=null?_f.lagPt.toFixed(1):null,'14.9');
-  const _lastFull=F(_f.labelDate,'2026年10月5日');
+  const _lastFull=F(_f.labelDate,'2026年10月6日');
   const days=[['9.14','3.56','26','周一'],['9.15','7.82','57','周二'],['9.16','4.22','31','周三'],['9.17','6.33','46','周四'],['9.18','7.34','53','周五'],['9.19','13.77','100','周六'],['9.20','6.10','44','周日']];
   shell.className='sales-shell mkt-v2';
   shell.innerHTML=`<header class="mkt-top"><div class="mkt-title"><div class="mkt-logo">↗</div><div><h1>营业与营销分析</h1><p>营业结果、目标进度与住院承接</p></div></div><div class="mkt-actions"><button class="mkt-import">⇧ 更新数据</button><button class="mkt-ai">✦ AI 报告</button><button class="mkt-close" aria-label="关闭">×</button></div></header>

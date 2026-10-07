@@ -21,12 +21,12 @@
   var MD_RANGE_CN = MD_LABEL + '1日—' + MD_LABEL + MD_MDAYS + '日';   // '10月1日—10月31日'
   var MD_PILL = MD_NUM + '.1—' + MD_NUM + '.' + MD_MDAYS;             // '10.1—10.31'
   function MDFt(){ var f=MDF()||{}; return {
-    date: MDFv(f.labelDateShort,'10.5'), dateCN: MDFv(f.labelDate,'2026年10月5日'),
-    remain: MDFv(f.remainDays,26), total: MDFv(f.totalWan,'44.65'),
-    amt: (f.amountRate!=null?f.amountRate.toFixed(1):'17.2'),
-    tim: (f.timeRate!=null?f.timeRate.toFixed(1):'16.1'),
-    need: MDFv(f.needDailyWan,'8.28'), remainWan: MDFv(f.remainWan,'215.35'),
-    avg: MDFv(f.mtdAvgWan,'8.93')
+    date: MDFv(f.labelDateShort,'10.6'), dateCN: MDFv(f.labelDate,'2026年10月6日'),
+    remain: MDFv(f.remainDays,25), total: MDFv(f.totalWan,'57.15'),
+    amt: (f.amountRate!=null?f.amountRate.toFixed(1):'22.0'),
+    tim: (f.timeRate!=null?f.timeRate.toFixed(1):'19.4'),
+    need: MDFv(f.needDailyWan,'8.11'), remainWan: MDFv(f.remainWan,'202.85'),
+    avg: MDFv(f.mtdAvgWan,'9.53')
   }; }
   /* ⭐⭐ 本期（观察期）标签（2026-10-06 业主定：所有「本期」时间戳与洞察按 9.28—10.11 算）。
      区间唯一真源＝数据层 derive().period（两周窗口），不再自己按自然周推导
@@ -61,38 +61,38 @@ return '本期（'+(_from===_to?_md(_from):(_md(_from)+'—'+_md(_to)))+'）';
      这几张部门台账（心理 / 客服）**尚未收到新一周数据**，故按各自最新周显式标注区间。 */
   var PWEEK='9.21—9.27（源表台账周）· ';
   var baseData={
-    meta:{range:MD_RANGE_CN+'（报告期）',updated:'数据截至 2026年10月5日 23:59'},
+    meta:{range:MD_RANGE_CN+'（报告期）',updated:'数据截至 2026年10月6日 23:59'},
     kpis:[
-      {label:MD_LABEL+'累计营业额',value:'44.65',unit:'万元',note:'截至 10.5 · 完成目标 17.2%'},
-      {label:WEEK+'营业额',value:'7.08',unit:'万元',note:'10.5 · 日均 7.08 万'},
-      {label:'在院人数',value:'37',unit:'人',note:'10.5 日终时点'},
-      {label:WEEK+'入院',value:'0',unit:'人',note:'10.5 已发生'},
-      {label:WEEK+'出院',value:'2',unit:'人',note:'营收日报口径（含多次）'},
-      {label:MD_LABEL+'门诊人次',value:'145',unit:'人次',note:'初诊 10＋复诊 135'}
+      {label:MD_LABEL+'累计营业额',value:'57.15',unit:'万元',note:'截至 10.6 · 完成目标 22.0%'},
+      {label:WEEK+'营业额',value:'19.58',unit:'万元',note:'9.28—10.6 · 日均 9.08 万'},
+      {label:'在院人数',value:'33',unit:'人',note:'10.6 日终时点'},
+      {label:WEEK+'入院',value:'19',unit:'人',note:'9.28—10.6 已发生'},
+      {label:WEEK+'出院',value:'19',unit:'人',note:'营收日报口径（含多次）'},
+      {label:MD_LABEL+'门诊人次',value:'281',unit:'人次',note:'初诊 28＋复诊 253'}
     ],
-    target:{closed:false,actual:44.65,goal:260,amountRate:17.2,timeRate:16.1,gap:-1.1,days:26,remaining:215.35,requiredDaily:8.28,currentDaily:7.08,dailyGap:1.20},
+    target:{closed:false,actual:57.15,goal:260,amountRate:22.0,timeRate:19.4,gap:-2.6,days:25,remaining:202.85,requiredDaily:8.11,currentDaily:9.08,dailyGap:-0.97},
     alerts:[
-      {tone:'red',icon:'↘',tag:'高风险',title:'营收速度不足',copy:'截至'+MDFt().dateCN+'金额完成'+MDFt().amt+'%，落后时间进度1.0个百分点，剩余 26 天仍需 215.35 万元。'},
-      {tone:'orange',icon:'◆',tag:'结构风险',title:'收入集中在少数高峰日',copy:'10月1日16.22万元为月内单日最高，10月2日10.44万元、10月5日7.08万元次之。'},
-      {tone:'purple',icon:'＋',tag:'患者池变化',title:'本期净减2人',copy:'10.5 入院0人、出院2人，10.5 日终在院37人。'},
-      {tone:'blue',icon:'✓',tag:'已核验',title:'5天累计连续勾稽',copy:'10月1—10月5日每日合计与累计连续一致，区间内无缺日。'}
+      {tone:'red',icon:'↘',tag:'高风险',title:'营收速度不足',copy:'截至'+MDFt().dateCN+'金额完成'+MDFt().amt+'%，领先时间进度2.6个百分点，剩余 25 天仍需 202.85 万元。'},
+      {tone:'orange',icon:'◆',tag:'结构风险',title:'收入集中在少数高峰日',copy:'10月1日16.22万元为月内单日最高，10月6日12.51万元、10月2日10.44万元次之。'},
+      {tone:'purple',icon:'＋',tag:'患者池变化',title:'本期净减4人',copy:'10.6 入院1人、出院5人，10.6 日终在院33人。'},
+      {tone:'blue',icon:'✓',tag:'已核验',title:'6天累计连续勾稽',copy:'10月1—10月6日每日合计与累计连续一致，区间内无缺日。'}
     ],
     daily:[
-      {d:'10.1',v:16.220027},{d:'10.2',v:10.444441},{d:'10.3',v:6.194017},{d:'10.4',v:4.710167},{d:'10.5',v:7.076667}
+      {d:'10.1',v:16.220027},{d:'10.2',v:10.444441},{d:'10.3',v:6.194017},{d:'10.4',v:4.710167},{d:'10.5',v:7.076667},{d:'10.6',v:12.507558}
     ],
     weeks:[
-      {label:'10.1—10.4',value:37.57},{label:'10.5—10.11',value:7.08,current:true}
+      {label:'10.1—10.4',value:37.57},{label:'10.5—10.11',value:19.58,current:true}
     ],
-    funnelAdm:0,funnelDis:2,funnelNet:-2,funnelWard:37,funnelWardAt:'10.5',
+    funnelAdm:1,funnelDis:5,funnelNet:-4,funnelWard:33,funnelWardAt:'10.6',
     funnel:[
-      {label:'门诊',value:'15人次'},{label:'入院',value:'0人'},{label:'出院',value:'2人'},{label:'在院',value:'37人'}
+      {label:'门诊',value:'70人次'},{label:'入院',value:'1人'},{label:'出院',value:'5人'},{label:'在院',value:'33人'}
     ],
     departments:[
       {key:'doctor',cls:'doctor',icon:'医',name:'医生组',desc:'住院规模与管床贡献',metric:'34 人',note:'在院 · 9.30 时点',foot:'本期入院 7 · 出院 6'},
       {key:'nursing',cls:'nursing',icon:'护',name:'护理组',desc:'治疗执行与服务兑现',metric:'95.2%',note:'物理治疗完成率（项目口径 · 9.20—9.26）',foot:'应做 495 · 未做 24'},
       {key:'psychology',cls:'psychology',icon:'心',name:'心理咨询组',desc:'咨询承接与收入结构',metric:'65 人次',note:PWEEK+'患者接触',foot:'9.14—9.20 为 40（+62.5%）'},
       {key:'service',cls:'service',icon:'客',name:'客服服务部',desc:'随访、到院及付费跟踪',metric:'52 条',note:PWEEK+'回访台账（已录至 9.24）',foot:'到院 18 · 34.6%'},
-      {key:'marketing',cls:'marketing',icon:'营',name:'营销组',desc:'管家、工娱与渠道归集',metric:'24.56万',note:WEEK+'营业额',foot:'入院 7 · 出院 6'}
+      {key:'marketing',cls:'marketing',icon:'营',name:'营销组',desc:'管家、工娱与渠道归集',metric:'19.58万',note:WEEK+'营业额',foot:'入院 19 · 出院 19'}
     ],
     ranks:{
       doctor:[['康X','医生组','出院费用 19.64 万（8 人次）','出院结帐明细 9.1—9.24','动态试算'],['王X','医生组','出院费用 15.98 万（9 人次）','出院结帐明细 9.1—9.24','动态试算'],['曾X','医生组','出院费用 15.84 万（11 人次，人次第 1）','出院结帐明细 9.1—9.24','动态试算'],['王X2','医生组','出院费用 12.74 万（7 人次）','出院结帐明细 9.1—9.24','动态试算'],['赵X','医生组','出院费用 11.17 万（6 人次）','出院结帐明细 9.1—9.24','动态试算']],

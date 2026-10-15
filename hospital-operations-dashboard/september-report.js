@@ -297,7 +297,25 @@
       '<td class="num">' + (t[1] ? (t[2] / t[1] * 100).toFixed(1) : '—') + '%</td></tr>' +
       '</tbody></table></div>' +
       '<p class="sr-weeks-note" style="margin-top:10px">管家E 23.3%、管家B 20.5% 居前；管家D 6.7% 明显偏低（60 条仅 4 人住院），建议单独复盘对接质量。' +
-      '本月「有业务标记」与「有姓名即算」两种口径结果同为 367 条，故无需并列双值；源表尾部另有 <code>9.31</code> 等无效日期行已剔除。</p>';
+      '本月「有业务标记」与「有姓名即算」两种口径结果同为 367 条，故无需并列双值；源表尾部另有 <code>9.31</code> 等无效日期行已剔除。</p>' +
+      /* ⭐ 2026-10-07 从主面板「员工排名」区折入：该组为 9.14 业主明细复核，
+         主面板已切到 10.1—10.7，9 月的口径一律收进本抽屉（数据不删减）。 */
+      '<h3 style="margin-top:16px">业主明细口径复核 · 9.14</h3>' +
+      '<p class="sr-sub">业主 9.14 提供的分人明细，与《患者有效对接表》逐人对照</p>' +
+      '<div class="sr-tbl-wrap"><table class="sr-tbl"><thead><tr>' +
+      '<th>管家</th><th class="num">对接</th><th class="num">物理</th><th class="num">心理</th><th class="num">住院</th>' +
+      '</tr></thead><tbody>' +
+      '<tr><td>管家B</td><td class="num"><b>19</b></td><td class="num">5</td><td class="num">10</td><td class="num">3</td></tr>' +
+      '<tr><td>管家D</td><td class="num"><b>17</b></td><td class="num">3</td><td class="num">1</td><td class="num">2</td></tr>' +
+      '<tr><td>管家A</td><td class="num"><b>15</b></td><td class="num">3</td><td class="num">5</td><td class="num">4</td></tr>' +
+      '<tr><td>管家C</td><td class="num"><b>14</b></td><td class="num">1</td><td class="num">4</td><td class="num">0</td></tr>' +
+      '<tr><td>管家E</td><td class="num"><b>13</b></td><td class="num">2</td><td class="num">4</td><td class="num">2</td></tr>' +
+      '<tr class="total"><td>合计</td><td class="num"><b>78</b></td><td class="num"><b>14</b></td><td class="num"><b>24</b></td><td class="num"><b>11</b></td></tr>' +
+      '</tbody></table></div>' +
+      '<p class="sr-weeks-note" style="margin-top:10px">业主明细合计 <b>对接 78 人次</b>（管家B 19 · 管家D 17 · 管家A 15 · 管家C 14 · 管家E 13）；' +
+      '物理治疗 14 · 心理治疗 24 · 住院 11。与患者对接表总数一致；分人数字有 1—2 条差异' +
+      '（管家D 16 vs 17、管家A 17 vs 15、管家C 13 vs 14），系两表对「检查 / 心理咨询」的标记粒度不同' +
+      '（对接表按是否发生勾选，明细按业务归类），已入核验清单。</p>';
   }
 
   function doctorHtml(d) {

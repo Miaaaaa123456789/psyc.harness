@@ -213,6 +213,10 @@
       x.label = shortMd(w.from) + '—' + shortMd(w.to);
       x.fullLabel = x.label;
       x.capped = w.capped;
+      /* ⭐ 2026-10-10：把周区间一并带出 —— 消费方要判断「该周是不是还没开始」
+         （未开始的周不能渲染成 0.00 万）。原先只带 label，消费方无法还原日期。 */
+      x.from = w.from;
+      x.to = w.to;
       x.current = (w.mon === curMon);
       x.inPeriod = (w.to >= CUR[0] && w.from <= CUR[1]);   // 该周是否落在本期内
       return x;

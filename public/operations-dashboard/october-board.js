@@ -241,7 +241,29 @@
       var list = showAll ? all : all.slice(0, PREVIEW);
       var rest = all.length - list.length;
 
-      var rowsHtml = list.map(function (r, i) {
+      /* ⭐ 2026-10-09：分组支持 `table` 型（医生 × 项目 矩阵）。
+         原先只认「行列表」，表达不了这种横竖交叉的明细，只能硬塞成一张卡一行。
+         table 结构：{cols:[表头], rows:[[...]], sum:[合计行], foot:'表下注释'} */
+      var t = g.table;
+      var tHead = '', tBody = '';
+      if (t && t.cols) {
+        tHead = '<div class="rk-table-wrap"><table class="rk-table"><thead><tr>' +
+          t.cols.map(function (c, i) { return '<th' + (i === 0 ? ' class="rk-td-name"' : '') + '>' + c + '</th>'; }).join('') +
+          '</tr></thead><tbody>';
+        tBody = (t.rows || []).map(function (r) {
+          return '<tr>' + r.map(function (c, i) {
+            return '<td' + (i === 0 ? ' class="rk-td-name"' : '') + '>' + c + '</td>';
+          }).join('') + '</tr>';
+        }).join('');
+        if (t.sum) {
+          tBody += '<tr class="rk-tr-sum">' + t.sum.map(function (c, i) {
+            return '<td' + (i === 0 ? ' class="rk-td-name"' : '') + '>' + c + '</td>';
+          }).join('') + '</tr>';
+        }
+        tBody += '</tbody></table></div>' + (t.foot ? '<p class="rk-table-foot">' + t.foot + '</p>' : '');
+      }
+
+      var rowsHtml = t ? (tHead + tBody) : list.map(function (r, i) {
         var medal = (g.medals && i < 3) ? ' medal' : '';
         var badge = (g.medals && i < 3) ? ['🥇', '🥈', '🥉'][i] : String(i + 1);
         return '<div class="rk-row' + medal + '">' +
@@ -252,15 +274,15 @@
           '</div>';
       }).join('');
 
-      return '<article class="rk-card">' +
+      return '<article class="rk-card' + (t ? ' rk-card-table' : '') + '">' +
         '<h4>' + (g.title || '排名') + '</h4>' +
         (g.note ? '<small>' + g.note + '</small>' : '') +
         rowsHtml +
-        (rest > 0
+        (t ? '' : (rest > 0
           ? '<button class="rk-more" type="button" data-rk-more="' + key + '">展开其余 ' + rest + ' 名 ↓</button>'
           : (showAll && all.length > PREVIEW
               ? '<button class="rk-more" type="button" data-rk-more="' + key + '">收起 ↑</button>'
-              : '')) +
+              : ''))) +
         '</article>';
     }).join('') + '</div>';
   }

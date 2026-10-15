@@ -362,3 +362,134 @@ body.srd-open .sep-drawer-btn i { transform: rotate(90deg); }
   color: var(--muted);
   font-size: 12px;
 }
+
+/* ⭐ 2026-10-09：员工排名区的「矩阵表」型分组（医生 × 项目明细）。
+   桌面一行放得下；窄屏横向滚动而不是挤成一团。 */
+.rk-card-table { grid-column: 1 / -1; }
+.rk-table-wrap {
+  margin-top: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.rk-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+.rk-table thead th {
+  padding: 8px 9px;
+  text-align: right;
+  white-space: nowrap;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #5B6678;
+  background: #F5F8FC;
+  border-bottom: 1px solid var(--line);
+}
+.rk-table thead th.rk-td-name { text-align: left; }
+.rk-table tbody td {
+  padding: 9px;
+  text-align: right;
+  white-space: nowrap;
+  color: #33415C;
+  border-bottom: 1px solid #F0F3F8;
+}
+.rk-table tbody td.rk-td-name {
+  text-align: left;
+  font-weight: 800;
+  color: var(--ink);
+}
+.rk-table tbody tr:hover td { background: #FAFCFF; }
+.rk-table tbody td b { color: #0A54C4; }
+.rk-tr-sum td {
+  background: #F0F6FC;
+  font-weight: 800;
+  color: #0058B0 !important;
+  border-top: 1px solid #D9E5F4;
+  border-bottom: 0 !important;
+}
+.rk-table-foot {
+  margin: 9px 0 0;
+  font-size: 10.5px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+
+/* ==========================================================================
+   护理组排名 · 九月明细绿色按钮抽屉（业主 2026-10-11 指定：
+   九月排名整体收进护理组排名面板右上角绿色按钮抽屉；面板改为 10 月口径）
+   ========================================================================== */
+.npr-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 13px; }
+.npr-head-title { font-size: 14px; font-weight: 750; color: var(--ink); }
+
+#npSepDrawer {
+  position: fixed; top: 0; right: 0; height: 100%;
+  width: min(1020px, 95vw);
+  margin: 0; padding: 0 26px 72px;
+  z-index: 400;
+  overflow-y: auto; overscroll-behavior: contain;
+  background: #F4F7FB;
+  transform: translateX(103%);
+  visibility: hidden;
+  transition: transform .32s cubic-bezier(.4, 0, .2, 1), visibility 0s .32s;
+  box-shadow: -24px 0 64px rgba(6, 40, 96, .22);
+  display: block;
+}
+body.nsd-open #npSepDrawer {
+  transform: none; visibility: visible;
+  transition: transform .32s cubic-bezier(.4, 0, .2, 1), visibility 0s 0s;
+}
+body.nsd-open { overflow: hidden; }
+
+.nsd-backdrop {
+  position: fixed; inset: 0; z-index: 399;
+  background: rgba(8, 22, 48, .46);
+  opacity: 0; pointer-events: none;
+  transition: opacity .32s;
+}
+body.nsd-open .nsd-backdrop { opacity: 1; pointer-events: auto; }
+
+.nsd-close {
+  position: fixed; top: 18px; right: 26px; z-index: 402;
+  width: 38px; height: 38px; display: none;
+  align-items: center; justify-content: center;
+  border: 0; border-radius: 50%;
+  background: #fff; color: #202638;
+  font-size: 19px; line-height: 1; font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(6, 40, 96, .18);
+}
+body.nsd-open .nsd-close { display: flex; }
+.nsd-close:hover { background: #EEF3FA; }
+
+.npr-inner { max-width: 1180px; margin: 0 auto; }
+.npr-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 9px; margin: 24px 0 5px; }
+.npr-h h3 { margin: 0; font-size: 19px; letter-spacing: -.3px; color: var(--ink); }
+.npr-h span { font-size: 12px; color: var(--muted); }
+.npr-sub { margin: 0 0 14px; font-size: 12px; line-height: 1.7; color: var(--muted); }
+.npr-card { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; margin: 0 0 14px; }
+.npr-card > h4 { margin: 0 0 4px; font-size: 14px; color: var(--ink); }
+.npr-card > p.npr-cap { margin: 0; font-size: 11.5px; line-height: 1.65; color: var(--muted); }
+.npr-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 10px; }
+.npr-mini { border: 1px solid var(--line); border-radius: 13px; padding: 11px 12px; min-width: 0; }
+.npr-mini h5 { margin: 0 0 7px; font-size: 12.5px; color: var(--ink); }
+.npr-mini .rk-table { min-width: 0; font-size: 11.5px; }
+.npr-mini .rk-table-wrap { margin-top: 0; }
+.npr-notes { margin: 10px 0 0; padding: 0; list-style: none; }
+.npr-notes li { position: relative; padding: 0 0 10px 16px; font-size: 12px; line-height: 1.75; color: #3d4759; }
+.npr-notes li:before { content: '\00b7'; position: absolute; left: 3px; top: 0; color: #0A54C4; font-weight: 900; }
+.npr-notes li strong { display: block; color: var(--ink); }
+.npr-notes li b { color: #0A54C4; }
+.npr-inner .rank-group h4 { font-size: 14px; }
+.npr-inner .diagnosis { margin-top: 4px; }
+
+/* 窄屏：抽屉全宽；表格横向滚动（数字列多，宁可滑也别挤成一团） */
+.npr-scrollhint { display: none; }
+@media (max-width: 720px) {
+  #npSepDrawer { width: 100vw; padding: 0 14px 60px; }
+  .npr-grid { grid-template-columns: 1fr; }
+  .npr-scrollhint { display: block; margin: 0 0 8px; font-size: 11px; color: var(--muted); }
+  .npr-card .rk-table { min-width: 520px; }
+}

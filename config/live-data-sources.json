@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "timezone": "Asia/Shanghai",
+  "implementationStatus": "specification_only",
+  "pollIntervalSeconds": 300,
+  "clientFallbackPollSeconds": 30,
+  "expectedSourceGroups": 7,
+  "confirmedDocumentLinks": 6,
+  "period": {"weeks": 2, "anchor": "2026-10-05", "naturalWeekRankingsSeparate": true},
+  "rules": {"missingIsZero": false, "productionSeedFallback": false, "sharedStorage": "self_hosted_postgresql", "gitStoresProductionData": false},
+  "sources": [
+    {"id":"action_report","name":"特别行动小组汇报表","url":"https://www.kdocs.cn/l/cbwp2cvTiFyK","enabled":false,"status":"authorization_and_mapping_pending","documentType":null,"fileId":null,"sheetIds":[],"mappingVersion":null,"grain":"department_report","warning":"表头和正文可能不同期；不能凭抓取日认定业务周"},
+    {"id":"psych_v4","name":"心理治疗与咨询组_管理表_V4_主任日报历史联动","url":"https://www.kdocs.cn/l/cgd3nVre7qWs","enabled":false,"status":"authorization_and_mapping_pending","documentType":null,"fileId":null,"sheetIds":[],"mappingVersion":null,"requiredRoles":["周个人统计","每日简报","管床心理师患者对接"],"warning":"requiredRoles为业务角色描述，接入时以实际sheet名称和ID核验，不猜映射"},
+    {"id":"psych_visits","name":"心理科来访数量","url":"https://www.kdocs.cn/l/coL1GfCvA0an","enabled":false,"status":"authorization_and_mapping_pending","documentType":null,"fileId":null,"sheetIds":[],"mappingVersion":null,"allowedSheetNames":["新-排班","课程排班","团体治疗登记"],"firstThreeOnly":true,"extraSheetsForbidden":true,"warning":"上线前核实前三sheet名称与ID；禁止整本导出后才过滤未经许可sheet"},
+    {"id":"butler_contacts","name":"患者有效对接表","url":"https://www.kdocs.cn/l/ctlu8ktnEwi8","enabled":false,"status":"authorization_and_mapping_pending","documentType":null,"fileId":null,"sheetIds":[],"mappingVersion":null,"grain":"contact_event_per_staff_sheet"},
+    {"id":"service_followups","name":"医院客服与导诊部管理规范及配套表格","url":"https://www.kdocs.cn/l/cuOhExpV6n29","enabled":false,"status":"authorization_and_mapping_pending","documentType":null,"fileId":null,"sheetIds":[],"mappingVersion":null,"grain":"followup_event"},
+    {"id":"arrival_register","name":"10月到院登记表","url":"https://www.kdocs.cn/l/cp4lRRCVcqVa","enabled":false,"status":"authorization_and_mapping_pending","documentType":null,"fileId":null,"sheetIds":[],"mappingVersion":null,"grain":"arrival_event","monthRollover":"require_verified_file_binding_do_not_guess_next_month_url"},
+    {"id":"unconfirmed_seventh","name":"第7组在线数据源待核实","url":null,"enabled":false,"status":"source_missing","warning":"不得将营收拖图或某文档的子sheet自动充作第7份在线文档"}
+  ],
+  "additionalInputs": [
+    {"id":"revenue_upload","kind":"shared_image_import","enabled":false,"status":"backend_not_deployed","approvalRequired":true},
+    {"id":"channel_manual_updates","kind":"shared_form_or_paste","enabled":false,"status":"backend_not_deployed"},
+    {"id":"doctor_detail","kind":"source_binding_required","enabled":false,"status":"ongoing_source_unconfirmed"},
+    {"id":"nursing_detail_and_roster","kind":"source_binding_required","enabled":false,"status":"ongoing_source_unconfirmed"}
+  ]
+}
